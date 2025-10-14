@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Metal RPS Arena</title>
     <style>
         :root {
@@ -13,6 +15,7 @@
             --glow-blue: #3498db;
             --glow-red: #e74c3c;
             --glow-green: #2ecc71;
+            --glow-yellow: #f39c12;
             --screen-bg: #0a0f14;
             --font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
         }
@@ -21,6 +24,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         html, body {
@@ -30,6 +34,7 @@
             font-family: var(--font-family);
             background-color: var(--metal-dark-gray);
             color: var(--metal-silver);
+            touch-action: manipulation;
         }
 
         body {
@@ -277,6 +282,7 @@
             gap: 10px;
             width: 100%;
             padding: 10px 0;
+            min-height: 0;
         }
 
         .video-container {
@@ -299,6 +305,18 @@
             transform: scaleX(-1);
         }
 
+        .video-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            z-index: 5;
+        }
+
         #game-status-display {
             position: absolute;
             top: 0;
@@ -306,23 +324,62 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.85);
             z-index: 10;
+            padding: 20px;
         }
         
         #game-status-text {
-            font-size: 5rem;
+            font-size: 3rem;
             font-weight: bold;
             color: white;
             text-shadow: 0 0 20px var(--glow-blue);
             animation: pulse 1.5s infinite;
+            margin-bottom: 20px;
+        }
+
+        #game-choices-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .choice-item {
+            text-align: center;
+        }
+
+        .choice-emoji {
+            font-size: 4rem;
+            margin-bottom: 10px;
+        }
+
+        .choice-label {
+            font-size: 1rem;
+            color: var(--metal-light-gray);
+        }
+
+        .vs-text {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--glow-yellow);
+        }
+
+        #winner-display {
+            font-size: 1.5rem;
+            margin-top: 20px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.5);
         }
 
         @keyframes pulse {
             0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.8; }
             100% { transform: scale(1); opacity: 1; }
         }
         
@@ -355,6 +412,26 @@
             font-size: 1.2rem;
             margin: 10px auto;
             display: block;
+            background: var(--metal-dark-gray);
+            border: 1px solid var(--metal-mid-gray);
+            color: var(--metal-silver);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 600px) {
+            #game-status-text {
+                font-size: 2rem;
+            }
+            .choice-emoji {
+                font-size: 3rem;
+            }
+            .vs-text {
+                font-size: 1.5rem;
+            }
+            #winner-display {
+                font-size: 1.2rem;
+            }
         }
 
     </style>
@@ -388,22 +465,24 @@
                     <div id="game-screen-content">
                         <div id="game-info">
                             <div class="player-info">
-                                <span id="local-player-name">Player 1</span><br>
+                                <span id="local-player-name">You</span><br>
                                 💰<span id="local-player-wallet">0</span>
                             </div>
                             <div class="player-info">
-                                Bet: 💰<span id="game-bet-amount">0</span>
+                                Pot: 💰<span id="game-bet-amount">0</span>
                             </div>
                             <div class="player-info">
-                                <span id="remote-player-name">Player 2</span><br>
+                                <span id="remote-player-name">Opponent</span><br>
                                 💰<span id="remote-player-wallet">0</span>
                             </div>
                         </div>
                         <div id="video-streams">
                             <div class="video-container">
+                                <div class="video-label">You</div>
                                 <video id="local-video" autoplay muted playsinline></video>
                             </div>
                             <div class="video-container">
+                                <div class="video-label">Opponent</div>
                                 <video id="remote-video" autoplay playsinline></video>
                             </div>
                         </div>
@@ -412,6 +491,18 @@
                 
                 <div id="game-status-display" class="hidden">
                     <h1 id="game-status-text"></h1>
+                    <div id="game-choices-display" class="hidden">
+                        <div class="choice-item">
+                            <div class="choice-emoji" id="player1-choice-emoji"></div>
+                            <div class="choice-label" id="player1-choice-label"></div>
+                        </div>
+                        <div class="vs-text">VS</div>
+                        <div class="choice-item">
+                            <div class="choice-emoji" id="player2-choice-emoji"></div>
+                            <div class="choice-label" id="player2-choice-label"></div>
+                        </div>
+                    </div>
+                    <div id="winner-display" class="hidden"></div>
                 </div>
 
                 <div id="modal-container"></div>
@@ -473,6 +564,12 @@
             controlButtons: document.querySelectorAll('.control-button'),
             gameStatusDisplay: document.getElementById('game-status-display'),
             gameStatusText: document.getElementById('game-status-text'),
+            gameChoicesDisplay: document.getElementById('game-choices-display'),
+            player1ChoiceEmoji: document.getElementById('player1-choice-emoji'),
+            player1ChoiceLabel: document.getElementById('player1-choice-label'),
+            player2ChoiceEmoji: document.getElementById('player2-choice-emoji'),
+            player2ChoiceLabel: document.getElementById('player2-choice-label'),
+            winnerDisplay: document.getElementById('winner-display'),
             localVideo: document.getElementById('local-video'),
             remoteVideo: document.getElementById('remote-video'),
             localPlayerName: document.getElementById('local-player-name'),
@@ -480,6 +577,12 @@
             localPlayerWallet: document.getElementById('local-player-wallet'),
             remotePlayerWallet: document.getElementById('remote-player-wallet'),
             gameBetAmount: document.getElementById('game-bet-amount'),
+        };
+
+        const choiceEmojis = {
+            rock: '🪨',
+            paper: '📄',
+            scissors: '✂️'
         };
 
         const sounds = {
@@ -603,11 +706,54 @@
                 dom.gameStatusText.textContent = text;
                 dom.gameStatusText.className = type ? `result-${type}` : '';
                 dom.gameStatusDisplay.classList.remove('hidden');
+                dom.gameChoicesDisplay.classList.add('hidden');
+                dom.winnerDisplay.classList.add('hidden');
                 if(duration > 0) {
                     setTimeout(() => dom.gameStatusDisplay.classList.add('hidden'), duration);
                 }
             },
-            hideGameStatus: () => dom.gameStatusDisplay.classList.add('hidden'),
+            hideGameStatus: () => {
+                dom.gameStatusDisplay.classList.add('hidden');
+                dom.gameChoicesDisplay.classList.add('hidden');
+                dom.winnerDisplay.classList.add('hidden');
+            },
+            showGameResult: (gameData, myChoice, opponentChoice, winnerChoice) => {
+                const myUid = appState.currentUser.uid;
+                const amP1 = gameData.players.p1.uid === myUid;
+                
+                dom.player1ChoiceEmoji.textContent = choiceEmojis[myChoice];
+                dom.player1ChoiceLabel.textContent = `You: ${myChoice.toUpperCase()}`;
+                
+                dom.player2ChoiceEmoji.textContent = choiceEmojis[opponentChoice];
+                dom.player2ChoiceLabel.textContent = `Opponent: ${opponentChoice.toUpperCase()}`;
+                
+                dom.gameChoicesDisplay.classList.remove('hidden');
+                
+                let resultText, resultClass, winnerName;
+                if (winnerChoice === null) {
+                    resultText = "It's a Draw!";
+                    resultClass = "draw";
+                    winnerName = "Nobody wins";
+                } else if (myChoice === winnerChoice) {
+                    resultText = "YOU WIN!";
+                    resultClass = "win";
+                    winnerName = `Winner: ${appState.currentUserProfile.displayName}`;
+                } else {
+                    resultText = "YOU LOSE!";
+                    resultClass = "lose";
+                    const opponentName = amP1 ? gameData.players.p2.displayName : gameData.players.p1.displayName;
+                    winnerName = `Winner: ${opponentName}`;
+                }
+                
+                dom.gameStatusText.textContent = resultText;
+                dom.gameStatusText.className = `result-${resultClass}`;
+                
+                dom.winnerDisplay.textContent = winnerName;
+                dom.winnerDisplay.className = `result-${resultClass}`;
+                dom.winnerDisplay.classList.remove('hidden');
+                
+                dom.gameStatusDisplay.classList.remove('hidden');
+            },
             resetControlButtons: (disabled = false) => {
                 dom.controlButtons.forEach(btn => {
                     btn.classList.remove('selected');
@@ -698,8 +844,24 @@
         const webrtc = {
             start: async () => {
                 try {
-                    appState.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    const constraints = {
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    };
+                    
+                    appState.localStream = await navigator.mediaDevices.getUserMedia(constraints);
                     dom.localVideo.srcObject = appState.localStream;
+                    
+                    await dom.localVideo.play();
+                    
                 } catch (e) {
                     console.error("WebRTC start failed:", e);
                     alert("Could not access camera/microphone. Please check permissions and refresh.");
@@ -710,7 +872,13 @@
                 appState.peer = new SimplePeer({
                     initiator: appState.isGameCreator,
                     stream: appState.localStream,
-                    trickle: false
+                    trickle: false,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' }
+                        ]
+                    }
                 });
 
                 const signalRef = db.ref(`games/${appState.currentGameId}/signals`);
@@ -723,17 +891,35 @@
                 
                 appState.peer.on('stream', stream => {
                     dom.remoteVideo.srcObject = stream;
+                    dom.remoteVideo.play().catch(e => {
+                        console.log("Autoplay prevented, trying with user interaction");
+                        setTimeout(() => dom.remoteVideo.play(), 1000);
+                    });
                 });
 
-                appState.peer.on('close', game.leave);
+                appState.peer.on('connect', () => {
+                    console.log('Peer connection established');
+                });
+
+                appState.peer.on('close', () => {
+                    console.log('Peer connection closed');
+                    game.leave();
+                });
+                
                 appState.peer.on('error', (err) => {
                     console.error('Peer error', err);
-                    game.leave();
                 });
 
                 signalRef.child(opponentSignalKey).on('value', snap => {
-                    if (snap.exists() && !appState.peer.destroyed && !appState.peer.connected) {
-                        appState.peer.signal(JSON.parse(snap.val()));
+                    if (snap.exists() && appState.peer && !appState.peer.destroyed) {
+                        try {
+                            const signalData = JSON.parse(snap.val());
+                            if (!appState.peer.connected) {
+                                appState.peer.signal(signalData);
+                            }
+                        } catch(e) {
+                            console.error('Error parsing signal:', e);
+                        }
                     }
                 });
             },
@@ -755,10 +941,17 @@
             init: () => {
                 dom.controlButtons.forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        if (btn.disabled) return;
+                        
                         sounds.play('click');
                         appState.playerChoice = e.currentTarget.dataset.choice;
-                        dom.controlButtons.forEach(b => b.classList.remove('selected'));
+                        
+                        dom.controlButtons.forEach(b => {
+                            b.classList.remove('selected');
+                            b.disabled = true;
+                        });
                         e.currentTarget.classList.add('selected');
+                        
                         game.submitChoice();
                     });
                 });
@@ -924,17 +1117,17 @@
                 
                 switch (gameData.status) {
                     case 'active':
-                        ui.hideGameStatus();
                         ui.showGameStatus("Connecting...", '', 0);
                         if (appState.isGameCreator) {
                             setTimeout(() => {
+                                if (!appState.currentGameId) return;
                                 db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
                                     const signals = snap.val();
                                     if(signals && signals.p1Signal && signals.p2Signal) {
                                         game.startCountdown();
                                     }
                                 });
-                            }, 1000);
+                            }, 2000);
                         }
                         break;
                     case 'countdown':
@@ -943,7 +1136,10 @@
                     case 'choose':
                         const myPlayerKey = appState.isGameCreator ? 'p1' : 'p2';
                         if (!gameData.players[myPlayerKey].choice) {
+                            ui.hideGameStatus();
                             ui.resetControlButtons(false);
+                        } else {
+                            ui.showGameStatus("Waiting for opponent...", '', 0);
                         }
                         break;
                     case 'reveal':
@@ -951,8 +1147,10 @@
                         game.revealResult(gameData);
                         break;
                     case 'finished':
-                        if (appState.isGameCreator && !document.querySelector('.modal')) {
-                            game.showPostGameOptions();
+                        if (!document.querySelector('.modal')) {
+                            setTimeout(() => {
+                                game.showPostGameOptions();
+                            }, 5000);
                         }
                         break;
                 }
@@ -991,11 +1189,13 @@
                     ui.showGameStatus(count);
                     sounds.play('countdown');
                 } else if (count === 0) {
-                    ui.showGameStatus("GO!");
+                    ui.showGameStatus("CHOOSE NOW!");
                     sounds.play('alarm');
-                    setTimeout(ui.hideGameStatus, 1000);
-                    appState.playerChoice = null;
-                    ui.resetControlButtons();
+                    setTimeout(() => {
+                        ui.hideGameStatus();
+                        appState.playerChoice = null;
+                        ui.resetControlButtons(false);
+                    }, 1000);
                 }
             },
             
@@ -1003,61 +1203,76 @@
                 if(!appState.currentGameId || !appState.playerChoice) return;
                 const playerKey = appState.isGameCreator ? 'p1' : 'p2';
                 db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
+                    ui.showGameStatus("Choice locked! Waiting for opponent...", '', 0);
+                    
                     db.ref(`games/${appState.currentGameId}/players`).once('value', (snap) => {
                         const players = snap.val();
                         if (players.p1.choice && players.p2.choice && appState.isGameCreator) {
-                            db.ref(`games/${appState.currentGameId}/status`).set('reveal');
+                            setTimeout(() => {
+                                db.ref(`games/${appState.currentGameId}/status`).set('reveal');
+                            }, 500);
                         }
                     });
                 });
-                ui.resetControlButtons(true);
             },
             
             revealResult: (gameData) => {
                 const { p1, p2 } = gameData.players;
                 if(!p1.choice || !p2.choice) return;
 
-                const myChoice = appState.isGameCreator ? p1.choice : p2.choice;
-                const opponentChoice = appState.isGameCreator ? p2.choice : p1.choice;
+                const myUid = appState.currentUser.uid;
+                const amP1 = p1.uid === myUid;
+                const myChoice = amP1 ? p1.choice : p2.choice;
+                const opponentChoice = amP1 ? p2.choice : p1.choice;
                 
-                ui.showGameStatus(`${myChoice.toUpperCase()} vs ${opponentChoice.toUpperCase()}`);
-
                 const winnerChoice = game.getWinner(p1.choice, p2.choice);
 
                 setTimeout(() => {
-                    let resultText, resultType;
+                    ui.showGameResult(gameData, myChoice, opponentChoice, winnerChoice);
+                    
                     if (winnerChoice === null) {
-                        resultText = "Draw!"; resultType = "draw"; sounds.play('draw');
+                        sounds.play('draw');
                     } else if (myChoice === winnerChoice) {
-                        resultText = "You Win!"; resultType = "win"; sounds.play('win');
+                        sounds.play('win');
                     } else {
-                        resultText = "You Lose!"; resultType = "lose"; sounds.play('lose');
+                        sounds.play('lose');
                     }
-                    ui.showGameStatus(resultText, resultType, 4000);
-                }, 2000);
+                }, 1000);
                 
                 if (appState.isGameCreator) {
-                    db.ref(`games/${appState.currentGameId}`).transaction(currentData => {
-                        if (currentData && currentData.status === 'reveal') {
-                             currentData.status = 'finished';
-                             return currentData;
-                        }
-                        return;
-                    }).then(result => {
-                        if (result.committed) {
-                            game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
-                        }
-                    });
+                    setTimeout(() => {
+                        db.ref(`games/${appState.currentGameId}`).transaction(currentData => {
+                            if (currentData && currentData.status === 'reveal') {
+                                 currentData.status = 'finished';
+                                 return currentData;
+                            }
+                            return;
+                        }).then(result => {
+                            if (result.committed) {
+                                game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
+                            }
+                        });
+                    }, 2000);
                 }
             },
             
-            getWinner: (c1, c2) => (c1 === c2) ? null : ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'scissors' && c2 === 'paper') || (c1 === 'paper' && c2 === 'rock')) ? c1 : c2,
+            getWinner: (c1, c2) => {
+                if (c1 === c2) return null;
+                if ((c1 === 'rock' && c2 === 'scissors') || 
+                    (c1 === 'scissors' && c2 === 'paper') || 
+                    (c1 === 'paper' && c2 === 'rock')) {
+                    return c1;
+                }
+                return c2;
+            },
             
             updateWallets: (gameData, winnerChoice, p1Id, p2Id) => {
                 if (winnerChoice === null) return Promise.resolve();
+                
                 const { bet } = gameData;
-                const winnerId = gameData.players.p1.choice === winnerChoice ? p1Id : p2Id;
-                const loserId = winnerId === p1Id ? p2Id : p1Id;
+                const p1Won = gameData.players.p1.choice === winnerChoice;
+                const winnerId = p1Won ? p1Id : p2Id;
+                const loserId = p1Won ? p2Id : p1Id;
                 
                 const winnerRef = db.ref(`users/${winnerId}/wallet`);
                 const loserRef = db.ref(`users/${loserId}/wallet`);
@@ -1065,7 +1280,9 @@
                 return Promise.all([
                     winnerRef.transaction(wallet => (wallet || 0) + bet),
                     loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet))
-                ]);
+                ]).then(() => {
+                    console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
+                });
             },
             
             showPostGameOptions: () => {
@@ -1073,6 +1290,7 @@
                     <div class="modal">
                         <div class="modal-content">
                             <h3>Game Over</h3>
+                            <p>Check your updated balance!</p>
                             <button id="exit-game-btn">Exit to Lobby</button>
                         </div>
                     </div>`;
@@ -1080,7 +1298,9 @@
                 document.getElementById('exit-game-btn').onclick = () => {
                      if (appState.isGameCreator) {
                         db.ref(`games/${appState.currentGameId}`).remove();
-                    }
+                     } else {
+                        game.leave();
+                     }
                 }
             },
             
@@ -1098,6 +1318,7 @@
                 appState.currentGameId = null;
                 appState.isGameCreator = false;
                 appState.activeGameListener = null;
+                appState.playerChoice = null;
                 ui.showScreen(dom.lobbyScreen);
                 ui.hideGameStatus();
                 ui.resetControlButtons(true);
