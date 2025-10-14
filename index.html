@@ -544,14 +544,15 @@
         // Replace with your Firebase project config
         // ============================================
         const firebaseConfig = {
-  apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
-  authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
-  projectId: "piedra-papel-o-tijeras-5ae53",
-  storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
-  messagingSenderId: "394850327081",
-  appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
-  measurementId: "G-C3VE5H0Y3S"
-};
+            apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
+            authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
+            databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
+            projectId: "piedra-papel-o-tijeras-5ae53",
+            storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
+            messagingSenderId: "394850327081",
+            appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
+            measurementId: "G-C3VE5H0Y3S"
+        };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -954,7 +955,9 @@
             sounds.click();
             
             const gameRef = database.ref('games/' + currentGameId);
-            const isPlayer1 = (await gameRef.child('player1').once('value')).val() === currentUser.uid;
+            const gameSnapshot = await gameRef.once('value');
+            const game = gameSnapshot.val();
+            const isPlayer1 = game.player1 === currentUser.uid;
             
             if (isPlayer1) {
                 await gameRef.update({ bet1: betAmount, bet1Ready: true });
@@ -965,19 +968,24 @@
             document.getElementById('betContainer').style.display = 'none';
             document.getElementById('gameStatus').textContent = 'Waiting for opponent to confirm bet...';
 
-            // Listen for both players ready
-            gameRef.on('value', snapshot => {
+            // Listen for both players ready - ONE TIME ONLY
+            const checkBothReady = (snapshot) => {
                 const game = snapshot.val();
-                if (game && game.bet1Ready && game.bet2Ready && game.status !== 'countdown') {
+                if (game && game.bet1Ready && game.bet2Ready && game.status === 'accepted') {
+                    gameRef.off('value', checkBothReady); // Stop listening
                     startCountdown();
                 }
-            });
+            };
+            
+            gameRef.on('value', checkBothReady);
         }
 
         async function startCountdown() {
-            await database.ref('games/' + currentGameId).update({ status: 'countdown' });
+            const gameRef = database.ref('games/' + currentGameId);
+            await gameRef.update({ status: 'countdown' });
             
             document.getElementById('controls').style.display = 'none';
+            document.getElementById('resultDisplay').innerHTML = '';
             
             for (let i = 3; i > 0; i--) {
                 document.getElementById('gameStatus').innerHTML = `<div class="countdown">${i}</div>`;
@@ -989,21 +997,43 @@
                 await sleep(1000);
             }
 
-            document.getElementById('gameStatus').textContent = 'Choose your move!';
+            document.getElementById('gameStatus').textContent = 'Choose your move NOW!';
             document.getElementById('controls').style.display = 'flex';
             
-            await database.ref('games/' + currentGameId).update({ status: 'playing' });
+            await gameRef.update({ 
+                status: 'playing',
+                choice1: null,
+                choice2: null 
+            });
+
+            // Listen for both choices - ONE TIME ONLY
+            const checkBothChoices = async (snapshot) => {
+                const game = snapshot.val();
+                if (game && game.choice1 && game.choice2 && game.status === 'playing') {
+                    gameRef.off('value', checkBothChoices); // Stop listening
+                    await determineWinner(game);
+                }
+            };
+            
+            gameRef.on('value', checkBothChoices);
         }
 
         async function makeChoice(choice) {
             sounds.click();
             
+            const gameRef = database.ref('games/' + currentGameId);
+            const gameSnapshot = await gameRef.once('value');
+            const game = gameSnapshot.val();
+            
+            if (game.status !== 'playing') {
+                return; // Ignore if not in playing state
+            }
+            
             // Highlight selected button
             document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
             document.getElementById(choice + 'Btn').classList.add('selected');
 
-            const gameRef = database.ref('games/' + currentGameId);
-            const isPlayer1 = (await gameRef.child('player1').once('value')).val() === currentUser.uid;
+            const isPlayer1 = game.player1 === currentUser.uid;
             
             if (isPlayer1) {
                 await gameRef.update({ choice1: choice });
@@ -1013,18 +1043,14 @@
 
             document.getElementById('controls').style.display = 'none';
             document.getElementById('gameStatus').textContent = 'Waiting for opponent...';
-
-            // Listen for both choices
-            gameRef.on('value', async snapshot => {
-                const game = snapshot.val();
-                if (game && game.choice1 && game.choice2 && game.status !== 'finished') {
-                    await determineWinner(game);
-                }
-            });
         }
 
         async function determineWinner(game) {
-            await database.ref('games/' + currentGameId).update({ status: 'finished' });
+            const gameRef = database.ref('games/' + currentGameId);
+            await gameRef.update({ status: 'finished' });
+            
+            // Stop all listeners
+            gameRef.off('value');
             
             const choice1 = game.choice1;
             const choice2 = game.choice2;
@@ -1049,13 +1075,20 @@
             // Show choices
             const icons = { rock: '🪨', paper: '📄', scissors: '✂️' };
             document.getElementById('gameStatus').innerHTML = `
-                <div style="display: flex; justify-content: space-around; font-size: 48px;">
-                    <div>You: ${icons[isPlayer1 ? choice1 : choice2]}</div>
-                    <div>Opponent: ${icons[isPlayer1 ? choice2 : choice1]}</div>
+                <div style="display: flex; justify-content: space-around; font-size: 48px; margin: 20px 0;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #0ff;">You</div>
+                        <div>${icons[isPlayer1 ? choice1 : choice2]}</div>
+                    </div>
+                    <div style="font-size: 36px; color: #fff;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #f0f;">Opponent</div>
+                        <div>${icons[isPlayer1 ? choice2 : choice1]}</div>
+                    </div>
                 </div>
             `;
 
-            await sleep(1500);
+            await sleep(2000);
 
             // Update wallets
             const bet1 = game.bet1 || 5;
@@ -1063,11 +1096,7 @@
             const totalPot = bet1 + bet2;
 
             if (result === 'draw') {
-                // Refund
-                await database.ref('users/' + game.player1 + '/wallet').transaction(current => (current || 0));
-                await database.ref('users/' + game.player2 + '/wallet').transaction(current => (current || 0));
-                
-                showResult('draw', 'It\'s a Draw!');
+                showResult('draw', '🤝 It\'s a Draw! Coins refunded');
                 sounds.draw();
             } else {
                 const winnerId = winner === 'player1' ? game.player1 : game.player2;
@@ -1085,23 +1114,25 @@
                 });
 
                 if (winnerId === currentUser.uid) {
-                    showResult('win', `You Win! +${totalPot} coins`);
+                    showResult('win', `🎉 You Win! +${totalPot} coins`);
                     sounds.win();
                 } else {
                     const loserBet = currentUser.uid === game.player1 ? bet1 : bet2;
-                    showResult('lose', `You Lose! -${loserBet} coins`);
+                    showResult('lose', `💔 You Lose! -${loserBet} coins`);
                     sounds.lose();
                 }
             }
 
             // Show play again option
             setTimeout(() => {
-                document.getElementById('resultDisplay').innerHTML += `
-                    <div style="margin-top: 20px;">
-                        <button onclick="playAgain()" class="action-btn">Play Again</button>
-                        <button onclick="exitGame()" class="action-btn secondary">Exit</button>
-                    </div>
+                const resultDiv = document.getElementById('resultDisplay');
+                const buttons = document.createElement('div');
+                buttons.style.marginTop = '20px';
+                buttons.innerHTML = `
+                    <button onclick="playAgain()" class="action-btn">Play Again</button>
+                    <button onclick="exitGame()" class="action-btn secondary">Exit to Lobby</button>
                 `;
+                resultDiv.appendChild(buttons);
             }, 2000);
         }
 
@@ -1114,49 +1145,69 @@
         async function playAgain() {
             sounds.click();
             
-            // Reset game state
-            await database.ref('games/' + currentGameId).remove();
+            const gameRef = database.ref('games/' + currentGameId);
+            const gameSnapshot = await gameRef.once('value');
+            const game = gameSnapshot.val();
             
+            if (!game) {
+                exitGame();
+                return;
+            }
+            
+            // Reset game state completely
+            await gameRef.update({
+                status: 'accepted',
+                bet1: null,
+                bet2: null,
+                bet1Ready: false,
+                bet2Ready: false,
+                choice1: null,
+                choice2: null
+            });
+            
+            // Reset UI
             document.getElementById('resultDisplay').innerHTML = '';
             document.getElementById('gameStatus').textContent = 'Set your bet and confirm!';
             document.getElementById('betContainer').style.display = 'block';
+            document.getElementById('controls').style.display = 'none';
+            document.getElementById('betAmount').value = '5';
             document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-            
-            // Create new game with same opponent
-            const oldGameSnapshot = await database.ref('games/' + currentGameId).once('value');
-            const oldGame = oldGameSnapshot.val();
-            
-            if (oldGame) {
-                const gameRef = database.ref('games').push();
-                currentGameId = gameRef.key;
-                
-                await gameRef.set({
-                    player1: oldGame.player1,
-                    player2: oldGame.player2,
-                    status: 'accepted',
-                    createdAt: Date.now()
-                });
-            }
         }
 
         function exitGame() {
             sounds.click();
             
+            // Stop all listeners
             if (currentGameId) {
-                database.ref('games/' + currentGameId).remove();
+                const gameRef = database.ref('games/' + currentGameId);
+                gameRef.off('value');
+                gameRef.remove();
             }
             
+            // Stop video streams
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
             }
             
+            // Close peer connection
             if (peerConnection) {
                 peerConnection.close();
+                peerConnection = null;
             }
             
+            // Clear video elements
+            document.getElementById('localVideo').srcObject = null;
+            document.getElementById('remoteVideo').srcObject = null;
+            
+            // Reset variables
             currentGameId = null;
-            localStream = null;
-            peerConnection = null;
+            
+            // Reset UI
+            document.getElementById('resultDisplay').innerHTML = '';
+            document.getElementById('gameStatus').textContent = '';
+            document.getElementById('betContainer').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
             
             showScreen('lobbyScreen');
         }
@@ -1166,48 +1217,57 @@
         // ============================================
         async function setupWebRTC() {
             try {
-                // Get local video stream
+                console.log('🎥 Starting WebRTC setup...');
+                
+                // Get local video stream with better constraints
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: true
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
                 });
                 
+                console.log('✅ Local stream obtained');
                 document.getElementById('localVideo').srcObject = localStream;
 
                 // Create peer connection
                 peerConnection = new RTCPeerConnection(rtcConfig);
+                console.log('✅ Peer connection created');
 
                 // Add local stream to peer connection
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
+                    console.log('✅ Track added:', track.kind);
                 });
 
                 // Handle incoming stream
                 peerConnection.ontrack = event => {
+                    console.log('✅ Remote track received:', event.streams[0]);
                     document.getElementById('remoteVideo').srcObject = event.streams[0];
+                };
+
+                // Connection state monitoring
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log('🔗 ICE Connection State:', peerConnection.iceConnectionState);
+                };
+
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection State:', peerConnection.connectionState);
                 };
 
                 // Handle ICE candidates
                 peerConnection.onicecandidate = event => {
                     if (event.candidate) {
-                        database.ref('games/' + currentGameId + '/candidates/' + currentUser.uid).push({
+                        console.log('📡 Sending ICE candidate');
+                        database.ref('games/' + currentGameId + '/iceCandidates/' + currentUser.uid).push({
                             candidate: event.candidate.toJSON()
                         });
                     }
                 };
-
-                // Listen for remote ICE candidates
-                database.ref('games/' + currentGameId + '/candidates').on('child_added', async snapshot => {
-                    const data = snapshot.val();
-                    for (let uid in data) {
-                        if (uid !== currentUser.uid) {
-                            for (let key in data[uid]) {
-                                const candidate = new RTCIceCandidate(data[uid][key].candidate);
-                                await peerConnection.addIceCandidate(candidate);
-                            }
-                        }
-                    }
-                });
 
                 // Determine if we should create offer
                 const gameSnapshot = await database.ref('games/' + currentGameId).once('value');
@@ -1215,6 +1275,8 @@
                 const isPlayer1 = game.player1 === currentUser.uid;
 
                 if (isPlayer1) {
+                    console.log('👤 Player 1: Creating offer...');
+                    
                     // Player 1 creates offer
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -1222,19 +1284,35 @@
                         sdp: offer.sdp,
                         type: offer.type
                     });
+                    console.log('✅ Offer created and sent');
 
                     // Listen for answer
                     database.ref('games/' + currentGameId + '/answer').on('value', async snapshot => {
                         const answer = snapshot.val();
-                        if (answer && peerConnection.remoteDescription === null) {
+                        if (answer && !peerConnection.currentRemoteDescription) {
+                            console.log('✅ Answer received, setting remote description');
                             await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
                         }
                     });
+
+                    // Listen for remote ICE candidates
+                    database.ref('games/' + currentGameId + '/iceCandidates/' + game.player2).on('child_added', async snapshot => {
+                        const data = snapshot.val();
+                        if (data && data.candidate) {
+                            console.log('📡 Adding remote ICE candidate');
+                            const candidate = new RTCIceCandidate(data.candidate);
+                            await peerConnection.addIceCandidate(candidate);
+                        }
+                    });
+
                 } else {
+                    console.log('👤 Player 2: Waiting for offer...');
+                    
                     // Player 2 creates answer
                     database.ref('games/' + currentGameId + '/offer').on('value', async snapshot => {
                         const offer = snapshot.val();
-                        if (offer && peerConnection.remoteDescription === null) {
+                        if (offer && !peerConnection.currentRemoteDescription) {
+                            console.log('✅ Offer received, creating answer');
                             await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
                             const answer = await peerConnection.createAnswer();
                             await peerConnection.setLocalDescription(answer);
@@ -1242,13 +1320,27 @@
                                 sdp: answer.sdp,
                                 type: answer.type
                             });
+                            console.log('✅ Answer created and sent');
+                        }
+                    });
+
+                    // Listen for remote ICE candidates
+                    database.ref('games/' + currentGameId + '/iceCandidates/' + game.player1).on('child_added', async snapshot => {
+                        const data = snapshot.val();
+                        if (data && data.candidate) {
+                            console.log('📡 Adding remote ICE candidate');
+                            const candidate = new RTCIceCandidate(data.candidate);
+                            await peerConnection.addIceCandidate(candidate);
                         }
                     });
                 }
 
+                document.getElementById('gameStatus').textContent = '🎥 Video connection established!';
+
             } catch (error) {
-                console.error('WebRTC setup error:', error);
-                alert('Could not access camera/microphone. Please grant permissions.');
+                console.error('❌ WebRTC setup error:', error);
+                alert('Could not access camera/microphone: ' + error.message + '\nPlease grant permissions and try again.');
+                exitGame();
             }
         }
 
