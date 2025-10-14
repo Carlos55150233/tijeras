@@ -1,125 +1,186 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Piedra Papel Tijeras — Multiplayer (WebRTC + Firebase)</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPS Multiplayer</title>
 <style>
-  :root{--bg:#0b0f12;--panel:#111418;--accent:#00d4ff;--muted:#9fb4c8}
-  *{box-sizing:border-box;font-family:Inter,system-ui,Arial,Helvetica,sans-serif}
-  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#060708,var(--bg));display:flex;align-items:center;justify-content:center;padding:18px;color:#e7f6ff}
-  .machine{width:420px;max-width:96vw;background:linear-gradient(180deg,#1c1f22,#0f1113);border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,.03);box-shadow:0 14px 40px rgba(0,0,0,.6)}
-  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .user{font-size:13px}
-  .balance{font-weight:700;color:#bff0c6}
-  .small{font-size:12px;color:var(--muted)}
-  .screen{background:linear-gradient(180deg,#021018,#071014);border-radius:12px;padding:8px;margin-bottom:12px;height:220px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.02)}
-  .meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;color:#9fb4c8}
-  .video-row{display:flex;gap:6px;height:110px}
-  video{width:50%;height:100%;background:#000;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,.02)}
-  .centerDisplay{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-weight:800;font-size:28px;color:#e6f7ff;text-shadow:0 6px 30px rgba(0,140,255,.06)}
-  .controls{display:flex;gap:8px;justify-content:space-between;margin-top:10px}
-  .btn{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg,#222528,#111214);border:1px solid rgba(255,255,255,.03);text-align:center;cursor:pointer;user-select:none}
-  .btn.selected{box-shadow:0 10px 30px rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.25)}
-  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.04);padding:6px 8px;border-radius:8px;color:#cbe9ff;cursor:pointer}
-  .sidebar{margin-top:12px;padding:8px;border-radius:10px;background:linear-gradient(180deg,#071014,#051014);border:1px solid rgba(255,255,255,.02);font-size:13px}
-  .user-list{max-height:120px;overflow:auto;display:flex;flex-direction:column;gap:6px}
-  .user-item{display:flex;justify-content:space-between;align-items:center;padding:6px;background:rgba(255,255,255,.01);border-radius:8px}
-  .wallet{margin-top:10px;background:rgba(255,255,255,.01);padding:8px;border-radius:8px}
-  input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:transparent;color:#eaf8ff}
-  .history{max-height:140px;overflow:auto;margin-top:8px;font-size:12px;padding:6px;background:rgba(255,255,255,0.01);border-radius:8px}
-  .flex{display:flex;gap:8px}
-  .muted{color:var(--muted);font-size:12px}
-  @media(min-width:720px){ .machine{width:720px} .video-row{height:160px} }
+/* ---------- GENERAL ---------- */
+body, html {
+    margin:0; padding:0;
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(#111,#000);
+    color:#fff;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+/* ---------- LOGIN / REGISTER ---------- */
+#auth-screen {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100%;
+}
+#auth-screen input, #auth-screen button {
+    margin:5px;
+    padding:10px;
+    font-size:1em;
+    border-radius:5px;
+    border:none;
+}
+#auth-screen button {
+    background:#0ff;
+    color:#000;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+/* ---------- USERS LIST ---------- */
+#users-list {
+    margin:10px;
+    padding:10px;
+    border:2px solid #0ff;
+    border-radius:10px;
+    max-width:300px;
+}
+.user-item {
+    display:flex;
+    justify-content:space-between;
+    margin:5px 0;
+}
+.user-item button {
+    background:#0ff;
+    border:none;
+    color:#000;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+/* ---------- GAME SCREEN ---------- */
+#game-screen {
+    display:none;
+    width:95%;
+    max-width:700px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+#game-tv {
+    width:100%;
+    aspect-ratio:16/9;
+    border:6px solid #888;
+    border-radius:20px;
+    background:radial-gradient(circle at top left,#333,#111);
+    box-shadow:0 0 20px #0ff inset,0 0 40px #0ff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+}
+#player-info { display:flex; justify-content:space-between; width:100%; padding:5px;}
+.video-box { width:48%; height:50%; border-radius:10px; overflow:hidden; border:2px solid #0ff;}
+video { width:100%; height:100%; background:#000; }
+
+/* ---------- BUTTONS ---------- */
+#controls {
+    display:flex;
+    justify-content:center;
+    gap:15px;
+    margin:10px;
+}
+.choice-btn {
+    width:80px; height:80px;
+    border-radius:50%;
+    font-size:1.5em;
+    border:3px solid #0ff;
+    background:linear-gradient(#222,#111);
+    color:#0ff;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: all 0.2s;
+    box-shadow:0 0 10px #0ff inset;
+}
+.choice-btn:hover, .choice-btn.selected {
+    box-shadow:0 0 20px #0ff,0 0 40px #0ff inset;
+}
+
+/* ---------- RESULT ---------- */
+#result {
+    font-size:2em;
+    margin-top:5px;
+    animation:pulse 1s infinite;
+}
+@keyframes pulse {
+    0%,100%{color:#0ff;}50%{color:#fff;}
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media(max-width:600px){
+    .choice-btn { width:60px; height:60px; font-size:1.2em; }
+    #result { font-size:1.5em; }
+}
+
 </style>
 </head>
 <body>
-  <div class="machine" role="application" aria-label="Piedra Papel Tijeras Multiplayer">
-    <div class="top">
-      <div>
-        <div id="displayName" class="user">Not signed</div>
-        <div id="statusLine" class="small">Please sign in</div>
-      </div>
-      <div style="text-align:right">
-        <div id="balance" class="balance">-- coins</div>
-        <div style="margin-top:6px">
-          <button id="signBtn" class="btn-ghost">Sign in (Google)</button>
-          <button id="signOutBtn" class="btn-ghost" style="display:none">Sign out</button>
-        </div>
-      </div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+    <h1>RPS Multiplayer</h1>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Sign Up</button>
+</div>
+
+<!-- ONLINE USERS -->
+<div id="users-list" style="display:none;">
+    <h3>Usuarios Online</h3>
+    <div id="users-container"></div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen">
+    <div id="player-info">
+        <div id="player-box">Tú: <span id="player-name">---</span> | Coins: <span id="player-coins">0</span></div>
+        <div id="opponent-box">Oponente: <span id="opponent-name">---</span> | Coins: <span id="opponent-coins">0</span></div>
     </div>
-
-    <div class="screen">
-      <div class="meta">
-        <div id="gameStatus">Status: idle</div>
-        <div class="small">Min bet: <span id="minBetDisplay">5</span> coins</div>
-      </div>
-
-      <div class="video-row">
-        <div style="flex:1"><video id="localVideo" autoplay muted playsinline></video></div>
-        <div style="flex:1"><video id="remoteVideo" autoplay playsinline></video></div>
-      </div>
-
-      <div class="centerDisplay" id="centerDisplay"><div id="centerText">Waiting</div></div>
+    <div id="game-tv">
+        <div id="videos" style="display:flex;width:100%;justify-content:space-around;height:60%;">
+            <div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
+            <div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
+        </div>
+        <div id="result">Esperando...</div>
     </div>
-
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input id="betInput" type="number" min="5" value="5" />
-      <button id="inviteBtn" class="btn-ghost">Invite</button>
-      <button id="refreshBtn" class="btn-ghost">Refresh</button>
+    <div id="controls">
+        <div class="choice-btn" data-choice="rock">🪨</div>
+        <div class="choice-btn" data-choice="paper">📄</div>
+        <div class="choice-btn" data-choice="scissors">✂️</div>
     </div>
+</div>
 
-    <div class="controls">
-      <div class="btn" id="btnRock" data-move="rock">🪨 Piedra</div>
-      <div class="btn" id="btnPaper" data-move="paper">📄 Papel</div>
-      <div class="btn" id="btnScissors" data-move="scissors">✂️ Tijera</div>
-    </div>
+<!-- AUDIO -->
+<audio id="countdown-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+<audio id="alarm-sound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"></audio>
+<audio id="click-sound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+<audio id="win-sound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+<audio id="lose-sound" src="https://actions.google.com/sounds/v1/cartoon/descending_whistle.ogg"></audio>
+<audio id="draw-sound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
 
-    <div class="sidebar" aria-live="polite">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>Usuarios activos</strong>
-        <div class="flex"><button id="autoInviteBtn" class="btn-ghost">Auto invite</button></div>
-      </div>
-      <div id="users" class="user-list"></div>
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
-      <div style="margin-top:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong>Invites</strong><div class="muted">Accept to play</div>
-        </div>
-        <div id="invites"></div>
-      </div>
-
-      <div class="wallet">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong>Wallet</strong><small id="walletId" class="muted"></small>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-          <div class="small">Saldo:</div>
-          <div id="walletBalance" class="balance">--</div>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <input id="depositAmount" type="number" min="1" value="50" />
-          <button id="depositBtn" class="btn-ghost">Depositar</button>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="leaveGameBtn" class="btn-ghost" style="display:none">Leave game</button>
-          <button id="playAgainBtn" class="btn-ghost" style="display:none">Play again</button>
-        </div>
-
-        <div style="margin-top:8px" class="small">Historial</div>
-        <div id="history" class="history"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase compat is simpler for quick demos with existing config; but modular could be used -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script>
-/* ================== CONFIG ================== */
+<script>
+// ---------- FIREBASE CONFIG ----------
 const firebaseConfig = {
   apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
   authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
@@ -134,618 +195,156 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-/* ========== UI ELEMENTS ========== */
-const signBtn = document.getElementById('signBtn');
-const signOutBtn = document.getElementById('signOutBtn');
-const displayName = document.getElementById('displayName');
-const statusLine = document.getElementById('statusLine');
-const balanceEl = document.getElementById('balance');
-const walletBalanceEl = document.getElementById('walletBalance');
-const walletIdEl = document.getElementById('walletId');
-const historyEl = document.getElementById('history');
-const usersList = document.getElementById('users');
-const invitesEl = document.getElementById('invites');
-const betInput = document.getElementById('betInput');
-const inviteBtn = document.getElementById('inviteBtn');
-const refreshBtn = document.getElementById('refreshBtn');
-const autoInviteBtn = document.getElementById('autoInviteBtn');
+// ---------- GLOBAL ----------
+let user = null;
+let localStream = null;
+let peerConnection = null;
+let gameId = null;
+let opponentId = null;
+let localChoice = null;
 
-const btnRock = document.getElementById('btnRock');
-const btnPaper = document.getElementById('btnPaper');
-const btnScissors = document.getElementById('btnScissors');
-
+// ---------- UI ----------
+const authScreen = document.getElementById('auth-screen');
+const usersList = document.getElementById('users-list');
+const usersContainer = document.getElementById('users-container');
+const gameScreen = document.getElementById('game-screen');
+const playerNameSpan = document.getElementById('player-name');
+const playerCoinsSpan = document.getElementById('player-coins');
+const opponentNameSpan = document.getElementById('opponent-name');
+const opponentCoinsSpan = document.getElementById('opponent-coins');
+const resultDiv = document.getElementById('result');
+const choiceButtons = document.querySelectorAll('.choice-btn');
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
-const centerText = document.getElementById('centerText');
-const centerDisplay = document.getElementById('centerDisplay');
-const gameStatus = document.getElementById('gameStatus');
-const leaveGameBtn = document.getElementById('leaveGameBtn');
-const playAgainBtn = document.getElementById('playAgainBtn');
-const depositBtn = document.getElementById('depositBtn');
-const depositAmount = document.getElementById('depositAmount');
 
-const minBetDisplay = document.getElementById('minBetDisplay');
-minBetDisplay.textContent = 5;
+// ---------- AUTH ----------
+function login(){
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    auth.signInWithEmailAndPassword(email,password)
+        .then(res=>setupUser(res.user))
+        .catch(err=>alert(err.message));
+}
+function signup(){
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    auth.createUserWithEmailAndPassword(email,password)
+        .then(res=>{
+            db.ref('users/'+res.user.uid).set({coins:100,online:true,name:res.user.email});
+            setupUser(res.user);
+        })
+        .catch(err=>alert(err.message));
+}
 
-/* ========== STATE =============== */
-let me = null;
-let myUid = null;
-let myName = null;
-let myBalance = 0;
-let localStream = null;
-let pc = null;
-let currentGameId = null;
-let countdownRunning = false;
+// ---------- SETUP USER ----------
+function setupUser(u){
+    user = u;
+    playerNameSpan.textContent = user.email;
+    authScreen.style.display='none';
+    usersList.style.display='block';
+    gameScreen.style.display='flex';
+    db.ref('users/'+user.uid).update({online:true});
+    db.ref('users/'+user.uid+'/coins').on('value',snap=>playerCoinsSpan.textContent=snap.val());
+    listOnlineUsers();
+    initVideo();
+}
 
-/* ========== SOUNDS ============== */
-function beep(freq=440,time=0.12){ try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='sine'; o.frequency.value=freq; o.connect(g); g.connect(ctx.destination); o.start(); g.gain.setValueAtTime(0.001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.02); setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+time); o.stop(ctx.currentTime+time+0.02); }, time*1000);}catch(e){console.warn('beep',e);} }
-function alarm(){ beep(880,0.14); setTimeout(()=>beep(660,0.12),120); }
+// ---------- ONLINE USERS ----------
+function listOnlineUsers(){
+    db.ref('users').on('value',snap=>{
+        usersContainer.innerHTML='';
+        snap.forEach(child=>{
+            if(child.key!==user.uid && child.val().online){
+                const div=document.createElement('div');
+                div.classList.add('user-item');
+                div.innerHTML=`<span>${child.val().name}</span> <button onclick="invite('${child.key}')">Invitar</button>`;
+                usersContainer.appendChild(div);
+            }
+        });
+    });
+}
 
-/* ========== AUTH ================= */
-signBtn.onclick = async ()=>{
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try{ await auth.signInWithPopup(provider); } catch(e){ alert('Auth failed: '+e.message); console.error(e); }
-};
-signOutBtn.onclick = ()=>auth.signOut();
+// ---------- INVITE ----------
+function invite(uid){
+    opponentId = uid;
+    gameId = db.ref('games').push().key;
+    db.ref('games/'+gameId).set({
+        player1:user.uid,
+        player2:uid,
+        bet:10,
+        status:'waiting'
+    });
+    alert('Invitación enviada!');
+}
 
-auth.onAuthStateChanged(async user=>{
-  if(user){
-    me = user; myUid = user.uid; myName = user.displayName || user.email.split('@')[0];
-    displayName.textContent = myName; statusLine.textContent = 'Signed in';
-    signBtn.style.display='none'; signOutBtn.style.display='inline-block';
-    walletIdEl.textContent = myUid.slice(0,6);
-    await ensureWallet(myUid,user);
-    attachWalletListener(myUid);
-    listenUsers();
-    listenInvites();
-    listenGames();
-    listenTransactions(myUid);
-    startLocalStream().catch(()=>console.warn('Camera start failed'));
-    // set presence
-    setPresence(true);
-  }else{
-    me = null; myUid = null; myName = null;
-    displayName.textContent = 'Not signed'; statusLine.textContent = 'Please sign in';
-    signBtn.style.display='inline-block'; signOutBtn.style.display='none';
-    walletIdEl.textContent=''; balanceEl.textContent='-- coins'; walletBalanceEl.textContent='--';
-    usersList.innerHTML=''; invitesEl.innerHTML=''; historyEl.innerHTML='';
-    setPresence(false);
-    stopLocalStream();
-  }
+// ---------- VIDEO ----------
+async function initVideo(){
+    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    localVideo.srcObject=localStream;
+}
+
+// ---------- CHOICE BUTTONS ----------
+choiceButtons.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+        localChoice = btn.dataset.choice;
+        choiceButtons.forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+        db.ref('games/'+gameId+'/choices/'+user.uid).set(localChoice);
+    });
 });
 
-/* ========== PRESENCE ============ */
-async function setPresence(online){
-  if(!myUid) return;
-  try{
-    const refStatus = db.ref('status/'+myUid);
-    await refStatus.set({online:online, lastSeen: firebase.database.ServerValue.TIMESTAMP, name: myName});
-    refStatus.onDisconnect().set({online:false, lastSeen: firebase.database.ServerValue.TIMESTAMP, name: myName});
-  }catch(e){console.warn('presence',e);}
-}
-
-/* ========== USERS LIST ========= */
-function listenUsers(){
-  const usersRef = db.ref('status');
-  usersRef.on('value', snap=>{
-    usersList.innerHTML = '';
-    snap.forEach(child=>{
-      const id = child.key; const v = child.val();
-      if(!v) return;
-      if(id === myUid) return;
-      const el = document.createElement('div'); el.className='user-item';
-      el.innerHTML = `<div><strong>${v.name||'User'}</strong><div class="muted">${v.online? 'online':'offline'}</div></div>`;
-      const btn = document.createElement('button'); btn.className='btn-ghost'; btn.textContent='Invite';
-      btn.onclick = ()=> sendInvite(id, v.name);
-      el.appendChild(btn);
-      usersList.appendChild(el);
-    });
-  });
-}
-refreshBtn.onclick = ()=>listenUsers();
-autoInviteBtn.onclick = async ()=>{
-  // invite first available user
-  const snap = await db.ref('status').once('value');
-  let target = null;
-  snap.forEach(child=>{
-    if(!target && child.key !== myUid && child.val() && child.val().online) target = {id:child.key, val: child.val()};
-  });
-  if(!target) return alert('No active users');
-  sendInvite(target.id, target.val.name);
-};
-
-/* ========== WALLET ============= */
-async function ensureWallet(uid, userObj){
-  const wRef = db.ref('wallets/'+uid);
-  // Create wallet if missing using transaction pattern
-  const snap = await wRef.once('value');
-  if(!snap.exists()){
-    await wRef.set({
-      coins: 100,
-      createdAt: firebase.database.ServerValue.TIMESTAMP,
-      email: userObj.email || null,
-      name: userObj.displayName || null
-    });
-  }
-}
-
-let walletListener = null;
-function attachWalletListener(uid){
-  if(walletListener) walletListener.off();
-  walletListener = db.ref('wallets/'+uid);
-  walletListener.on('value', snap=>{
-    const data = snap.val();
-    const coins = data && data.coins !== undefined ? data.coins : 0;
-    myBalance = coins;
-    walletBalanceEl.textContent = coins + ' coins';
-    balanceEl.textContent = coins + ' coins';
-  });
-}
-
-/* ========== TRANSACTIONS HISTORY ====== */
-function listenTransactions(uid){
-  const tRef = db.ref('transactions/'+uid).limitToLast(30);
-  tRef.on('value', snap=>{
-    historyEl.innerHTML = '';
-    if(!snap.exists()) return;
-    const arr = [];
-    snap.forEach(child=> arr.push(child.val()));
-    arr.reverse().forEach(tx=>{
-      const div = document.createElement('div'); div.style.padding='6px'; div.style.borderBottom='1px dashed rgba(255,255,255,.03)';
-      const dt = tx.ts ? new Date(tx.ts).toLocaleString() : 'now';
-      div.innerHTML = `<strong>${tx.type}</strong> <span class="muted">(${dt})</span><div>${tx.note||''}</div><div>${tx.amount>0?'+':''}${tx.amount} coins</div>`;
-      historyEl.appendChild(div);
-    });
-  });
-}
-
-/* record transaction helper */
-async function pushTx(uid, tx){
-  const pushRef = db.ref('transactions/'+uid).push();
-  await pushRef.set(Object.assign({}, tx, {ts: firebase.database.ServerValue.TIMESTAMP}));
-}
-
-/* atomic change with transaction on coins leaf */
-async function changeBalanceAtomic(uid, delta, meta){
-  const coinsRef = db.ref('wallets/'+uid+'/coins');
-  const result = await coinsRef.transaction(current=>{
-    if(current === null) {
-      if(delta < 0) return; // abort
-      return delta;
-    }
-    const newv = current + delta;
-    if(newv < 0) return; // abort
-    return newv;
-  }, undefined, false);
-  if(!result.committed) throw new Error('Transaction aborted (insufficient funds or conflict)');
-  await pushTx(uid, {type: meta.type||'change', amount: delta, note: meta.note||''});
-  return result.snapshot.val();
-}
-
-/* deposit test button */
-depositBtn.onclick = async ()=>{
-  if(!myUid) return alert('Sign in first');
-  const a = Math.max(1, Math.floor(Number(depositAmount.value) || 50));
-  try{
-    await changeBalanceAtomic(myUid, a, {type:'deposit', amount:a, note:'manual deposit'});
-    alert('Deposited '+a+' coins');
-  }catch(e){ alert('Error: '+e.message); }
-};
-
-/* ========== INVITES & MATCHMAKING ======== */
-/* send invite: write to /invites/{targetUid}/{fromUid} */
-async function sendInvite(targetUid, targetName){
-  if(!myUid) return alert('Sign in first');
-  const bet = Math.max(5, Math.floor(Number(betInput.value) || 5));
-  // quick local balance check
-  if(myBalance < bet) return alert('Insufficient funds to invite with that bet');
-  const refInvite = db.ref('invites/'+targetUid+'/'+myUid);
-  await refInvite.set({from: myUid, fromName: myName, bet, ts: firebase.database.ServerValue.TIMESTAMP});
-  alert('Invite sent to '+(targetName || targetUid));
-}
-
-/* listen to invites addressed to me */
-function listenInvites(){
-  if(!myUid) return;
-  const myInvRef = db.ref('invites/'+myUid);
-  myInvRef.on('value', snap=>{
-    invitesEl.innerHTML = '';
-    snap.forEach(child=>{
-      const inv = child.val(); const fromUid = child.key;
-      const el = document.createElement('div'); el.className='user-item';
-      el.innerHTML = `<div><strong>${inv.fromName||fromUid}</strong><div class="muted">Bet ${inv.bet} coins</div></div>`;
-      const accept = document.createElement('button'); accept.className='btn-ghost'; accept.textContent='Accept';
-      const decline = document.createElement('button'); decline.className='btn-ghost'; decline.textContent='Decline';
-      accept.onclick = ()=> acceptInvite(fromUid, inv.bet);
-      decline.onclick = ()=> db.ref('invites/'+myUid+'/'+fromUid).remove();
-      el.appendChild(accept); el.appendChild(decline);
-      invitesEl.appendChild(el);
-    });
-  });
-}
-
-/* accept invite -> create game and lock bets atomically (with rollback if necessary) */
-async function acceptInvite(fromUid, bet){
-  if(!myUid) return;
-  // check both balances
-  const snapA = await db.ref('wallets/'+fromUid+'/coins').once('value');
-  const snapB = await db.ref('wallets/'+myUid+'/coins').once('value');
-  const balA = snapA.exists()? snapA.val() : 0;
-  const balB = snapB.exists()? snapB.val() : 0;
-  if(balA < bet){ return alert('Opponent does not have enough coins'); }
-  if(balB < bet){ return alert('You do not have enough coins'); }
-
-  // create game object
-  const newGameRef = db.ref('games').push();
-  const gameId = newGameRef.key;
-  const gameObj = {
-    p1: fromUid,
-    p2: myUid,
-    bet: bet,
-    state: 'initial', // initial -> locking -> countdown -> playing -> finished -> canceled
-    ts: firebase.database.ServerValue.TIMESTAMP
-  };
-  await newGameRef.set(gameObj);
-  // remove invite
-  await db.ref('invites/'+myUid+'/'+fromUid).remove();
-
-  // try to lock funds: debit p1, then debit p2; if second fails, refund p1
-  try{
-    // debit p1
-    const res1 = await db.ref('wallets/'+fromUid+'/coins').transaction(curr=>{
-      if(curr === null) return;
-      if(curr < bet) return; // abort
-      return curr - bet;
-    }, undefined, false);
-    if(!res1.committed) throw new Error('Opponent funds lock failed');
-
-    // debit p2 (me)
-    const res2 = await db.ref('wallets/'+myUid+'/coins').transaction(curr=>{
-      if(curr === null) return;
-      if(curr < bet) return;
-      return curr - bet;
-    }, undefined, false);
-    if(!res2.committed){
-      // refund p1
-      await db.ref('wallets/'+fromUid+'/coins').transaction(curr=> (curr||0) + bet );
-      throw new Error('Your funds lock failed, refunded opponent');
-    }
-
-    // mark game locked and start countdown
-    await db.ref('games/'+gameId).update({state:'countdown', locked:true, startedBy:myUid});
-    openGame(gameId);
-  }catch(e){
-    console.error('lock error',e);
-    await db.ref('games/'+gameId).update({state:'canceled', reason: e.message || 'lock_failed'});
-    alert('Could not lock funds: '+e.message);
-  }
-}
-
-/* if you invited someone, game will be created by acceptor. Also allow inviter to cancel invite */
-db.ref('invites').on('child_changed', ()=>{}); // keep subscription to invites root
-
-inviteBtn.onclick = async ()=>{
-  // pick selected user from list first (we don't have selection UI), so invite first online user
-  const snap = await db.ref('status').once('value');
-  let target = null;
-  snap.forEach(child=>{
-    if(!target && child.key !== myUid && child.val() && child.val().online) target = {id:child.key, val:child.val()};
-  });
-  if(!target) return alert('No active users');
-  sendInvite(target.id, target.val.name);
-};
-
-/* ========== GAMES LISTENERS & FLOW ========== */
-/* Listen for games where I am p1 or p2 */
-function listenGames(){
-  const gamesRef = db.ref('games');
-  gamesRef.on('child_added', snap=>{
-    const g = snap.val(); const id = snap.key;
-    if(!g) return;
-    if(g.p1 === myUid || g.p2 === myUid){
-      openGame(id);
-    }
-  });
-
-  gamesRef.on('child_changed', snap=>{
-    const g = snap.val(); const id = snap.key;
-    if(!g) return;
-    if(g.p1 === myUid || g.p2 === myUid){
-      // handle changes
-      if(g.state === 'countdown'){
-        // already handled in openGame stream
-      }
-    }
-  });
-}
-
-async function openGame(gameId){
-  currentGameId = gameId;
-  gameStatus.textContent = 'In game: '+gameId;
-  leaveGameBtn.style.display='inline-block';
-  // attach listener
-  const gRef = db.ref('games/'+gameId);
-  gRef.on('value', snap=>{
+// ---------- LISTEN FOR GAME ----------
+db.ref('games').on('child_changed',snap=>{
     const g = snap.val();
-    if(!g) return;
-    // update center UI
-    if(g.state === 'countdown'){
-      runCountdown(gameId);
-    } else if(g.state === 'playing'){
-      centerText.textContent = 'Choose!';
-    } else if(g.state === 'finished'){
-      resolveAfterFinish(g);
-      gRef.off(); currentGameId = null;
-    } else if(g.state === 'canceled'){
-      centerText.textContent = 'Game canceled';
-      gRef.off(); currentGameId = null;
+    if(snap.key===gameId && g.choices){
+        const c1=g.choices[g.player1];
+        const c2=g.choices[g.player2];
+        if(c1 && c2) determineWinner(c1,c2);
     }
-  });
-
-  // If I am p1 (inviter) then create WebRTC offer and wait; if I am p2 (acceptor) WebRTC will be created by listener when inviter creates offer.
-  const gSnap = await gRef.once('value'); const g = gSnap.val();
-  if(!g) return;
-  if(g.p1 === myUid){
-    // inviter: create offer and prepare signaling paths
-    await createOfferForGame(gameId, g.p2);
-  } else {
-    // acceptor: wait for offer event (we have db listener for webrtc offers below)
-  }
-}
-
-/* leave game */
-leaveGameBtn.onclick = async ()=>{
-  if(!currentGameId) return;
-  try{
-    await db.ref('games/'+currentGameId+'/state').set('canceled');
-  }catch(e){console.warn(e);}
-  currentGameId = null;
-  leaveGameBtn.style.display='none';
-  playAgainBtn.style.display='none';
-  gameStatus.textContent = 'idle';
-}
-
-/* ========== COUNTDOWN ========== */
-let countdownToken = null;
-async function runCountdown(gameId){
-  if(countdownRunning) return;
-  countdownRunning = true;
-  for(let i=3;i>=1;i--){
-    centerText.textContent = i;
-    beep(600 + i*40, 0.12);
-    if(i===1) alarm();
-    // write countdown to DB so both clients see same numbers
-    await db.ref('games/'+gameId+'/countdown').set(i);
-    await new Promise(r=>setTimeout(r,900));
-  }
-  countdownRunning = false;
-  // set playing
-  await db.ref('games/'+gameId).update({state:'playing', startedAt: firebase.database.ServerValue.TIMESTAMP});
-  centerText.textContent = 'Choose!';
-  // clear countdown node
-  await db.ref('games/'+gameId+'/countdown').remove();
-}
-
-/* ========== MAKE MOVE & RESOLVE ========= */
-async function makeMove(move){
-  if(!currentGameId) return alert('No active game');
-  // UI select
-  [btnRock,btnPaper,btnScissors].forEach(b=>b.classList.remove('selected'));
-  document.querySelector(`[data-move="${move}"]`).classList.add('selected');
-
-  // set move
-  await db.ref('games/'+currentGameId+'/moves/'+myUid).set({move, ts: firebase.database.ServerValue.TIMESTAMP});
-
-  // check if both moves present -> resolve
-  const gSnap = await db.ref('games/'+currentGameId).once('value'); const g = gSnap.val();
-  const moves = (g && g.moves) || {};
-  const players = [g.p1, g.p2];
-  if(Object.keys(moves).length === 2){
-    // compute winner (p1 vs p2)
-    const p1move = moves[players[0]].move;
-    const p2move = moves[players[1]].move;
-    const res = decide(p1move, p2move); // 0 draw, 1 p1 wins, 2 p2 wins
-    let winner = null;
-    if(res === 1) winner = players[0];
-    if(res === 2) winner = players[1];
-    const bet = g.bet || minBetDisplay.textContent*1;
-    const pot = bet * 2;
-    if(res === 0){
-      // refund both atomically (transaction each)
-      await db.ref('wallets/'+players[0]+'/coins').transaction(c=> (c||0) + bet);
-      await db.ref('wallets/'+players[1]+'/coins').transaction(c=> (c||0) + bet);
-      await db.ref('games/'+currentGameId).update({state:'finished', result:'draw', moves, winner:null, finishedAt: firebase.database.ServerValue.TIMESTAMP});
-      // record tx
-      await pushTx(players[0], {type:'refund', amount:bet, note:'draw refund'});
-      await pushTx(players[1], {type:'refund', amount:bet, note:'draw refund'});
-    }else{
-      // credit winner
-      await db.ref('wallets/'+winner+'/coins').transaction(c=> (c||0) + pot);
-      await db.ref('games/'+currentGameId).update({state:'finished', result:'win', moves, winner: winner, finishedAt: firebase.database.ServerValue.TIMESTAMP});
-      // record txs: winner gets pot, loser lost bet already by lock
-      const loser = (winner === players[0]) ? players[1] : players[0];
-      await pushTx(winner, {type:'win', amount: pot, note:`Won game ${currentGameId}`});
-      await pushTx(loser, {type:'lose', amount: -bet, note:`Lost game ${currentGameId}`});
-    }
-  }else{
-    centerText.textContent = 'Waiting opponent...';
-  }
-}
-
-/* decide helper */
-function decide(a,b){
-  if(a===b) return 0;
-  if(a==='rock' && b==='scissors') return 1;
-  if(a==='scissors' && b==='paper') return 1;
-  if(a==='paper' && b==='rock') return 1;
-  return 2;
-}
-
-/* UI move handlers */
-btnRock.onclick = ()=> makeMove('rock');
-btnPaper.onclick = ()=> makeMove('paper');
-btnScissors.onclick = ()=> makeMove('scissors');
-
-/* ========== RESOLVE UI AFTER FINISH ========== */
-async function resolveAfterFinish(g){
-  if(!g) return;
-  if(g.result === 'draw'){
-    centerText.textContent = 'DRAW';
-    beep(520,0.12);
-  } else if(g.result === 'win'){
-    if(g.winner === myUid){
-      centerText.textContent = 'YOU WIN!';
-      beep(980,0.16);
-    }else{
-      centerText.textContent = 'YOU LOSE';
-      beep(220,0.16);
-    }
-  }
-  // update local balance (listener already updates)
-  // show play again
-  playAgainBtn.style.display='inline-block';
-  leaveGameBtn.style.display='none';
-}
-
-/* playAgain handler */
-playAgainBtn.onclick = ()=>{
-  // simple UX: reset UI, let user invite again
-  playAgainBtn.style.display='none';
-  centerText.textContent = 'Waiting';
-  gameStatus.textContent = 'idle';
-  currentGameId = null;
-};
-
-/* ========== WEbrtc SIGNALLING (via Realtime DB) ========== */
-/* Basic flow:
-   - inviter (p1) creates pc, creates offer, writes under /webrtc/{gameId}/offer
-   - acceptor sees offer, creates pc, sets remote, creates answer, writes /webrtc/{gameId}/answer
-   - both write ICE candidates under /webrtc/{gameId}/candidates/{uid}/{pushId}
-*/
-
-async function startLocalStream(){
-  try{
-    localStream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640}}, audio:true});
-    localVideo.srcObject = localStream;
-  }catch(e){ console.warn('getUserMedia failed', e); }
-}
-
-function createPeerConnection(gameId){
-  pc = new RTCPeerConnection({ iceServers: [{urls:'stun:stun.l.google.com:19302'}] });
-  if(localStream){
-    localStream.getTracks().forEach(t=>pc.addTrack(t, localStream));
-  }
-  pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
-  pc.onicecandidate = event => {
-    if(event.candidate){
-      const candRef = db.ref('webrtc/'+gameId+'/candidates/'+myUid).push();
-      candRef.set(event.candidate.toJSON());
-    }
-  };
-  return pc;
-}
-
-/* inviter creates offer */
-async function createOfferForGame(gameId, otherUid){
-  createPeerConnection(gameId);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  await db.ref('webrtc/'+gameId+'/offer').set({sdp: offer.sdp, type: offer.type, from: myUid});
-  // listen for answer
-  db.ref('webrtc/'+gameId+'/answer').on('value', async snap=>{
-    const ans = snap.val();
-    if(ans && ans.sdp){
-      await pc.setRemoteDescription(new RTCSessionDescription(ans));
-    }
-  });
-  // listen for remote ICE
-  db.ref('webrtc/'+gameId+'/candidates/'+otherUid).on('child_added', snap=>{
-    const cand = snap.val();
-    if(cand) pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e=>console.warn('addIce',e));
-  });
-}
-
-/* watch for offers to answer */
-db.ref('webrtc').on('child_added', async snap=>{
-  const gameId = snap.key; const data = snap.val();
-  if(!data) return;
-  // if an offer exists and it's not from me and game involves me, create answer
-  if(data.offer && data.offer.from !== myUid){
-    // check game participants
-    const gSnap = await db.ref('games/'+gameId).once('value'); const g = gSnap.val();
-    if(!g) return;
-    if(g.p1 === myUid || g.p2 === myUid){
-      // create answer
-      await createAnswerForGame(gameId, data.offer, data.offer.from, g);
-    }
-  }
 });
 
-async function createAnswerForGame(gameId, offerObj, offerFromUid, gameObj){
-  createPeerConnection(gameId);
-  await pc.setRemoteDescription(new RTCSessionDescription(offerObj));
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  await db.ref('webrtc/'+gameId+'/answer').set({sdp: answer.sdp, type: answer.type, from: myUid});
-  // listen for ICE candidates from inviter
-  db.ref('webrtc/'+gameId+'/candidates/'+offerFromUid).on('child_added', snap=>{
-    const cand = snap.val();
-    if(cand) pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e=>console.warn('addIce',e));
-  });
+// ---------- DETERMINE WINNER ----------
+function determineWinner(c1,c2){
+    if(c1===c2){
+        resultDiv.textContent='Empate';
+        db.ref('users/'+user.uid+'/coins').transaction(c=>c);
+        db.ref('users/'+opponentId+'/coins').transaction(c=>c);
+    }else if(
+        (c1==='rock'&&c2==='scissors')||
+        (c1==='scissors'&&c2==='paper')||
+        (c1==='paper'&&c2==='rock')
+    ){
+        resultDiv.textContent='Ganaste!';
+        db.ref('users/'+user.uid+'/coins').transaction(c=>c+20);
+        db.ref('users/'+opponentId+'/coins').transaction(c=>c-10);
+    }else{
+        resultDiv.textContent='Perdiste!';
+        db.ref('users/'+user.uid+'/coins').transaction(c=>c-10);
+        db.ref('users/'+opponentId+'/coins').transaction(c=>c+20);
+    }
 }
 
-/* cleanup — optional: remove webrtc entries when game finished - keep for debugging */
-
-/* ========== HELPERS ========== */
-/* pushTx helper outside earlier scope */
-async function pushTx(uid, tx){
-  const pushRef = db.ref('transactions/'+uid).push();
-  await pushRef.set(Object.assign({}, tx, {ts: firebase.database.ServerValue.TIMESTAMP}));
-}
-
-/* listen invites root for cleanup in case inviter created webrtc before acceptor */
-function listenInvites(){
-  const ref = db.ref('invites');
-  ref.on('value', ()=>{ /* no-op keep sync */ });
-}
-listenInvites();
-
-/* ========== LISTENERS TO CLEAN / GAME CREATION FROM INVITER SIDE ========= */
-/* When a game is created, inviter should create offer (if he is p1). To make reliable: subscribe to games child_added */
-db.ref('games').on('child_added', async snap=>{
-  const id = snap.key; const g = snap.val();
-  if(!g) return;
-  if(g.p1 === myUid){
-    // create offer for this game (inviter)
-    await createOfferForGame(id, g.p2).catch(e=>console.warn('offer err',e));
-    // if this game started countdown elsewhere, will sync through games/{id} listener
-  }
-});
-
-/* ========== LISTEN TO INVITES (again for UI binding) ========== */
-function listenInvites(){
-  if(!myUid) return;
-  const myInvRef = db.ref('invites/'+myUid);
-  myInvRef.on('value', snap=>{
-    invitesEl.innerHTML = '';
-    snap.forEach(child=>{
-      const inv = child.val(); const fromUid = child.key;
-      const el = document.createElement('div'); el.className='user-item';
-      el.innerHTML = `<div><strong>${inv.fromName||fromUid}</strong><div class="muted">Bet ${inv.bet} coins</div></div>`;
-      const accept = document.createElement('button'); accept.className='btn-ghost'; accept.textContent='Accept';
-      const decline = document.createElement('button'); decline.className='btn-ghost'; decline.textContent='Decline';
-      accept.onclick = ()=> acceptInvite(fromUid, inv.bet);
-      decline.onclick = ()=> db.ref('invites/'+myUid+'/'+fromUid).remove();
-      el.appendChild(accept); el.appendChild(decline);
-      invitesEl.appendChild(el);
+// ---------- WEBRTC ----------
+async function startWebRTC(){
+    peerConnection = new RTCPeerConnection();
+    localStream.getTracks().forEach(track=>peerConnection.addTrack(track,localStream));
+    peerConnection.ontrack = e=>remoteVideo.srcObject=e.streams[0];
+    
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    db.ref('games/'+gameId+'/webrtc/offer').set(offer.toJSON());
+    db.ref('games/'+gameId+'/webrtc/answer').on('value',async snap=>{
+        if(snap.val()) await peerConnection.setRemoteDescription(snap.val());
     });
-  });
+    peerConnection.onicecandidate=e=>{
+        if(e.candidate) db.ref('games/'+gameId+'/webrtc/candidates/'+user.uid).push(e.candidate.toJSON());
+    };
 }
 
-/* a lighter wrapper for errors in long flows */
-function safeLog(e){ console.warn(e); }
-
-/* ================= FIN ================= */
-  </script>
+// ---------- DISCONNECT ----------
+window.addEventListener('beforeunload',()=>{
+    db.ref('users/'+user.uid).update({online:false});
+});
+</script>
 </body>
 </html>
