@@ -1,400 +1,1211 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Piedra, Papel, Tijeras - Batalla en Tiempo Real</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors - Live Battle Arena</title>
     <style>
-        :root {
-            --bg-color: #1a1f25; --metal-light: #4a5568; --metal-dark: #2d3748;
-            --metal-shadow: #1c2128; --screen-bg: #0c0e10; --glow-color: #00d9ff;
-            --text-color: #e2e8f0; --win-color: #48bb78; --lose-color: #f56565; --draw-color: #ecc94b;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap');
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
         body {
-            font-family: 'Roboto', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            margin: 0; padding: 0; display: flex; justify-content: center; align-items: center;
-            min-height: 100vh; overflow: hidden; background: radial-gradient(circle, #2a333d 0%, var(--bg-color) 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
         }
-        #app-container {
-            width: 100%; max-width: 500px; height: 100vh; max-height: 950px;
-            background: linear-gradient(145deg, var(--metal-light), var(--metal-dark));
-            border-radius: 25px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7), inset 0 2px 5px rgba(255, 255, 255, 0.1), inset 0 -2px 5px rgba(0, 0, 0, 0.5);
-            padding: 20px; position: relative; display: flex; flex-direction: column; border: 3px solid var(--metal-shadow);
+
+        /* Login Screen */
+        #loginScreen {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
         }
-        .screen-bezel { background: #222; padding: 8px; border-radius: 18px; clip-path: polygon(5% 0, 95% 0, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0 95%, 0 5%); box-shadow: inset 0 0 15px #000; }
-        #screen {
-            background: var(--screen-bg); border: 2px solid #000; padding: 10px; flex-grow: 1; display: flex; flex-direction: column;
-            clip-path: polygon(5% 0, 95% 0, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0 95%, 0 5%); position: relative; overflow: hidden;
+
+        #loginScreen h1 {
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 28px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
         }
-        #screen::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 50%); pointer-events: none; }
-        #game-info { display: flex; justify-content: space-between; font-size: 0.8em; padding: 5px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: 'Orbitron', sans-serif; }
-        #video-container { display: flex; gap: 10px; flex-grow: 1; margin-top: 10px; position: relative; }
-        .video-player { width: 50%; background: #111; border: 2px solid var(--metal-dark); border-radius: 8px; overflow: hidden; position: relative; transition: transform 0.3s ease; }
-        .video-player video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .player-name { position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 3px; font-size: 0.7em; }
-        #connection-status-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); color: var(--lose-color); display: none;
-            justify-content: center; align-items: center; font-family: 'Orbitron', sans-serif; z-index: 20; font-weight: bold;
-            animation: pulse 1s infinite alternate;
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
-        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
-        #game-status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-family: 'Orbitron', sans-serif; color: var(--glow-color); text-shadow: 0 0 15px var(--glow-color); z-index: 10; pointer-events: none;}
-        #countdown { font-size: 6em; font-weight: 700; }
-        #result-text { font-size: 2.5em; font-weight: 700; text-transform: uppercase; animation: fadeInZoom 0.5s ease-out; }
-        @keyframes fadeInZoom { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
-        #controls { display: flex; justify-content: space-around; padding: 20px 0; gap: 15px; }
-        .control-btn {
-            flex-grow: 1; padding: 15px; font-size: 2.5em; border-radius: 50%; border: 3px solid var(--metal-dark);
-            background: linear-gradient(145deg, var(--metal-light), var(--metal-dark));
-            box-shadow: 0 5px 10px var(--metal-shadow), inset 0 1px 2px rgba(255,255,255,0.2);
-            cursor: pointer; transition: all 0.1s ease-out; color: var(--text-color);
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
         }
-        .control-btn:hover { border-color: var(--glow-color); box-shadow: 0 0 15px var(--glow-color), 0 0 25px var(--glow-color), inset 0 1px 2px rgba(255,255,255,0.2); }
-        .control-btn:active, .control-btn.selected { transform: translateY(2px) scale(0.98); box-shadow: 0 2px 5px var(--metal-shadow), inset 0 0 10px var(--glow-color); background: var(--metal-dark); border-color: var(--glow-color); }
-        .control-btn.disabled { opacity: 0.5; pointer-events: none; }
-        .screen-overlay {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 14, 16, 0.95); z-index: 100;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+
+        /* Lobby Screen */
+        #lobbyScreen {
+            display: none;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
         }
-        .screen-overlay.active { opacity: 1; pointer-events: all; }
-        .screen-overlay h2 { font-family: 'Orbitron', sans-serif; color: var(--glow-color); margin-bottom: 20px; }
-        .screen-overlay form { width: 100%; display: flex; flex-direction: column; align-items: center;}
-        .screen-overlay input { width: 100%; max-width: 300px; padding: 12px; margin: 8px 0; border-radius: 5px; border: 1px solid var(--metal-light); background: #1a1f25; color: var(--text-color); font-size: 1em; }
-        .screen-overlay button { width: 100%; max-width: 300px; padding: 12px 20px; margin-top: 15px; border: none; border-radius: 5px; background: var(--glow-color); color: var(--bg-color); font-size: 1.1em; font-weight: bold; cursor: pointer; transition: all 0.2s; }
-        .screen-overlay button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px var(--glow-color); }
-        .screen-overlay button:disabled { background: var(--metal-light); cursor: not-allowed; transform: none; box-shadow: none; }
-        .screen-overlay p a { color: var(--glow-color); cursor: pointer; }
-        #online-users-list { list-style: none; padding: 0; width: 100%; max-height: 200px; overflow-y: auto; }
-        #online-users-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; margin: 5px 0; background: var(--metal-dark); border-radius: 5px; }
-        #transaction-history { width: 100%; font-size: 0.8em; max-height: 100px; overflow-y: auto; margin-top: 15px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 5px; text-align: left; }
+
+        .user-info {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .wallet {
+            font-size: 32px;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin: 10px 0;
+        }
+
+        .online-users {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .user-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+        }
+
+        .challenge-btn {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .challenge-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Game Machine */
+        #gameScreen {
+            display: none;
+            position: relative;
+        }
+
+        .game-machine {
+            width: 90vw;
+            max-width: 800px;
+            background: linear-gradient(135deg, #2c3e50, #34495e, #2c3e50);
+            border: 3px solid #95a5a6;
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 
+                0 10px 40px rgba(0, 0, 0, 0.5),
+                inset 0 2px 10px rgba(255, 255, 255, 0.1),
+                inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        /* TV Screen (octagonal) */
+        .tv-screen {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            border: 5px solid #7f8c8d;
+            padding: 20px;
+            margin-bottom: 30px;
+            position: relative;
+            clip-path: polygon(15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%, 0% 15%);
+            box-shadow: 
+                inset 0 0 20px rgba(0, 0, 0, 0.8),
+                0 0 20px rgba(0, 212, 255, 0.3);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Video Container */
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .player-video {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            aspect-ratio: 4/3;
+        }
+
+        .player-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .player-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        .player-balance {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255, 215, 0, 0.9);
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        /* Game Status */
+        .game-status {
+            color: #fff;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+            margin: 20px 0;
+        }
+
+        .countdown {
+            font-size: 72px;
+            color: #ff6b6b;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .choice-btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #3a3a3a, #2d2d2d);
+            border: 3px solid #7f8c8d;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 48px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 
+                0 5px 15px rgba(0, 0, 0, 0.3),
+                inset 0 2px 5px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(0, 212, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .choice-btn:hover::before {
+            width: 200%;
+            height: 200%;
+        }
+
+        .choice-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 10px 30px rgba(0, 212, 255, 0.5),
+                inset 0 2px 5px rgba(255, 255, 255, 0.2);
+            border-color: #00d4ff;
+        }
+
+        .choice-btn.selected {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+        }
+
+        .choice-btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Bet Input */
+        .bet-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .bet-input {
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #7f8c8d;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            text-align: center;
+            width: 200px;
+            margin: 10px;
+        }
+
+        /* Result Display */
+        .result-display {
+            text-align: center;
+            color: #fff;
+            font-size: 36px;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .result-display.win {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            box-shadow: 0 0 30px rgba(56, 239, 125, 0.6);
+        }
+
+        .result-display.lose {
+            background: linear-gradient(135deg, #eb3349, #f45c43);
+            box-shadow: 0 0 30px rgba(235, 51, 73, 0.6);
+        }
+
+        .result-display.draw {
+            background: linear-gradient(135deg, #f2994a, #f2c94c);
+            box-shadow: 0 0 30px rgba(242, 153, 74, 0.6);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 15px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .game-machine {
+                padding: 20px;
+            }
+
+            .tv-screen {
+                min-height: 300px;
+                padding: 15px;
+            }
+
+            .choice-btn {
+                min-width: 100px;
+                padding: 20px 10px;
+                font-size: 36px;
+            }
+
+            .countdown {
+                font-size: 48px;
+            }
+
+            .game-status {
+                font-size: 18px;
+            }
+
+            .video-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border: 3px solid #95a5a6;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: #fff;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
     </style>
 </head>
 <body>
-    <div id="app-container">
-        <div class="screen-bezel"><div id="screen">
-            <div id="game-info">
-                <span id="player1-info">JUGADOR 1: ---</span>
-                <span>APUESTA: <span id="bet-amount">0</span></span>
-                <span id="player2-info">JUGADOR 2: ---</span>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <h1>🎮 Rock Paper Scissors Arena</h1>
+        <p style="color: #ccc; margin-bottom: 30px;">Live Battle with Video Chat</p>
+        <input type="email" id="emailInput" placeholder="Email" class="login-btn" style="background: rgba(255,255,255,0.2);">
+        <input type="password" id="passwordInput" placeholder="Password" class="login-btn" style="background: rgba(255,255,255,0.2);">
+        <button onclick="loginWithEmail()" class="login-btn">Login / Sign Up</button>
+        <button onclick="loginWithGoogle()" class="login-btn" style="background: linear-gradient(135deg, #ea4335, #fbbc05);">
+            Sign in with Google
+        </button>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div id="lobbyScreen">
+        <div class="user-info">
+            <h2 id="userName" style="color: #00d4ff;">Welcome!</h2>
+            <div class="wallet">💰 <span id="userBalance">100</span> coins</div>
+        </div>
+        <h3 style="color: #fff; margin-bottom: 15px;">Online Players</h3>
+        <div class="online-users" id="onlineUsers">
+            <div class="spinner"></div>
+        </div>
+        <button onclick="logout()" class="action-btn secondary" style="width: 100%; margin-top: 20px;">Logout</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen">
+        <div class="game-machine">
+            <div class="tv-screen">
+                <div class="video-container" id="videoContainer">
+                    <div class="player-video">
+                        <video id="localVideo" autoplay muted playsinline></video>
+                        <div class="player-label" id="localPlayerLabel">You</div>
+                        <div class="player-balance" id="localPlayerBalance">💰 100</div>
+                    </div>
+                    <div class="player-video">
+                        <video id="remoteVideo" autoplay playsinline></video>
+                        <div class="player-label" id="remotePlayerLabel">Opponent</div>
+                        <div class="player-balance" id="remotePlayerBalance">💰 100</div>
+                    </div>
+                </div>
+                
+                <div class="game-status" id="gameStatus">Waiting for players...</div>
+                <div id="resultDisplay"></div>
             </div>
-            <div id="video-container">
-                <div id="connection-status-overlay">Conexión Inestable...</div>
-                <div class="video-player"><video id="localVideo" autoplay muted playsinline></video><span class="player-name">Tú</span></div>
-                <div class="video-player"><video id="remoteVideo" autoplay playsinline></video><span id="remotePlayerName" class="player-name">Oponente</span></div>
+
+            <div class="bet-container" id="betContainer">
+                <label style="color: #fff; font-size: 18px;">Bet Amount: </label>
+                <input type="number" id="betAmount" class="bet-input" value="5" min="5">
+                <button onclick="confirmBet()" class="action-btn">Confirm Bet</button>
             </div>
-            <div id="game-status"><div id="countdown"></div><div id="result-text"></div></div>
-        </div></div>
-        <div id="controls">
-            <button class="control-btn disabled" id="rock">🪨</button>
-            <button class="control-btn disabled" id="paper">📄</button>
-            <button class="control-btn disabled" id="scissors">✂️</button>
-        </div>
-        <div id="auth-screen" class="screen-overlay active">
-            <form id="login-form">
-                <h2>ACCESO</h2>
-                <input type="email" id="email" placeholder="Correo electrónico" autocomplete="email" required>
-                <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
-                <button type="submit" id="login-btn">Ingresar</button>
-            </form>
-            <button id="google-login-btn">Ingresar con Google</button>
-            <p>¿No tienes cuenta? <a id="show-signup">Regístrate</a></p>
-        </div>
-        <div id="signup-screen" class="screen-overlay">
-            <form id="signup-form">
-                <h2>REGISTRO</h2>
-                <input type="email" id="signup-email" placeholder="Correo electrónico" autocomplete="email" required>
-                <input type="password" id="signup-password" placeholder="Contraseña" autocomplete="new-password" required>
-                <button type="submit" id="signup-btn">Crear Cuenta</button>
-            </form>
-            <p>¿Ya tienes cuenta? <a id="show-login">Ingresa</a></p>
-        </div>
-        <div id="lobby-screen" class="screen-overlay">
-            <h2>LOBBY</h2>
-            <p>Bienvenido, <b id="user-email"></b></p>
-            <p>Monedas: 🪙<b id="user-coins">0</b></p>
-            <hr style="width: 80%; border-color: var(--metal-light);">
-            <h3>Usuarios Disponibles</h3>
-            <ul id="online-users-list"><li>Buscando jugadores...</li></ul>
-            <div id="transaction-history"></div>
-            <button id="logout-btn">Salir</button>
+
+            <div class="controls" id="controls" style="display: none;">
+                <button class="choice-btn" onclick="makeChoice('rock')" id="rockBtn">
+                    <span>🪨</span>
+                </button>
+                <button class="choice-btn" onclick="makeChoice('paper')" id="paperBtn">
+                    <span>📄</span>
+                </button>
+                <button class="choice-btn" onclick="makeChoice('scissors')" id="scissorsBtn">
+                    <span>✂️</span>
+                </button>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="exitGame()" class="action-btn secondary">Exit Game</button>
+            </div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <!-- Challenge Modal -->
+    <div id="challengeModal" class="modal">
+        <div class="modal-content">
+            <h2>Incoming Challenge!</h2>
+            <p id="challengeText" style="margin: 20px 0;"></p>
+            <button onclick="acceptChallenge()" class="action-btn">Accept</button>
+            <button onclick="declineChallenge()" class="action-btn secondary">Decline</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <script>
+        // ============================================
+        // FIREBASE CONFIGURATION
+        // Replace with your Firebase project config
+        // ============================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
-            authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
-            projectId: "piedra-papel-o-tijeras-5ae53",
-            storageBucket: "piedra-papel-o-tijeras-5ae53.appspot.com",
-            messagingSenderId: "394850327081",
-            appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
-            measurementId: "G-C3VE5H0Y3S"
-        };
+  apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
+  authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
+  projectId: "piedra-papel-o-tijeras-5ae53",
+  storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
+  messagingSenderId: "394850327081",
+  appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
+  measurementId: "G-C3VE5H0Y3S"
+};
 
+
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        const db = firebase.database();
-        const googleProvider = new firebase.auth.GoogleAuthProvider();
+        const database = firebase.database();
 
-        let currentUser = null, currentGameId = null, localStream, peerConnection;
-        let lobbyListeners = {};
-        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
-
-        const dom = {
-            auth: document.getElementById('auth-screen'), signup: document.getElementById('signup-screen'), lobby: document.getElementById('lobby-screen'),
-            controls: document.querySelectorAll('.control-btn'), countdown: document.getElementById('countdown'), resultText: document.getElementById('result-text'),
-            localVideo: document.getElementById('localVideo'), remoteVideo: document.getElementById('remoteVideo'), onlineUsersList: document.getElementById('online-users-list'),
-            userEmail: document.getElementById('user-email'), userCoins: document.getElementById('user-coins'), betAmount: document.getElementById('bet-amount'),
-            player1Info: document.getElementById('player1-info'), player2Info: document.getElementById('player2-info'), remotePlayerName: document.getElementById('remotePlayerName'),
-            transactionHistory: document.getElementById('transaction-history'), loginForm: document.getElementById('login-form'), signupForm: document.getElementById('signup-form'),
-            loginBtn: document.getElementById('login-btn'), signupBtn: document.getElementById('signup-btn'), connectionStatus: document.getElementById('connection-status-overlay'),
+        // ============================================
+        // GLOBAL VARIABLES
+        // ============================================
+        let currentUser = null;
+        let currentGameId = null;
+        let localStream = null;
+        let peerConnection = null;
+        let pendingChallenge = null;
+        let gameState = {
+            bet: 0,
+            player1: null,
+            player2: null,
+            player1Choice: null,
+            player2Choice: null,
+            status: 'waiting'
         };
-        
-        const sounds = { /* Los objetos de audio se omiten por brevedad en este bloque, pero están en el código completo */ };
-        const ambientHum = new Audio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YgAAAAA=");
-        ambientHum.loop = true; ambientHum.volume = 0.05;
 
-        // --- Lógica Principal y de Autenticación ---
-        function isMobileDevice() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
-        auth.onAuthStateChanged(user => {
-            if (user) { currentUser = user; ambientHum.play().catch(e => {}); enterLobby(); } 
-            else { currentUser = null; ambientHum.pause(); showScreen('auth'); cleanUpLobbyListeners(); cleanUpGame(); }
-        });
-        dom.loginForm.addEventListener('submit', e => { e.preventDefault(); setButtonLoading(dom.loginBtn, true, 'Ingresar'); auth.signInWithEmailAndPassword(dom.loginForm.email.value, dom.loginForm.password.value).catch(err => alert(`Error: ${err.message}`)).finally(() => setButtonLoading(dom.loginBtn, false, 'Ingresar')); });
-        document.getElementById('google-login-btn').addEventListener('click', () => { if (isMobileDevice()) { auth.signInWithRedirect(googleProvider); } else { auth.signInWithPopup(googleProvider).catch(err => alert(`Error de Google: ${err.message}`)); } });
-        dom.signupForm.addEventListener('submit', e => { e.preventDefault(); setButtonLoading(dom.signupBtn, true, 'Crear Cuenta'); auth.createUserWithEmailAndPassword(dom.signupForm['signup-email'].value, dom.signupForm['signup-password'].value).then(cred => { db.ref(`wallets/${cred.user.uid}`).set({ coins: 100, history: { "0": "¡Bienvenido! Recibes 100 monedas." } }); }).catch(err => alert(`Error: ${err.message}`)).finally(() => setButtonLoading(dom.signupBtn, false, 'Crear Cuenta')); });
-        document.getElementById('logout-btn').addEventListener('click', () => { if (currentUser) db.ref(`status/${currentUser.uid}`).remove(); auth.signOut(); });
-        document.getElementById('show-signup').addEventListener('click', () => showScreen('signup'));
-        document.getElementById('show-login').addEventListener('click', () => showScreen('auth'));
-        function setButtonLoading(button, isLoading, originalText) { button.disabled = isLoading; button.textContent = isLoading ? 'Procesando...' : originalText; }
-        function showScreen(screenName) { ['auth', 'signup', 'lobby'].forEach(s => dom[s].classList.remove('active')); if (dom[screenName]) dom[screenName].classList.add('active'); }
-        function cleanUpLobbyListeners() { Object.values(lobbyListeners).forEach(ref => ref.off()); lobbyListeners = {}; }
+        // WebRTC Configuration
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
 
-        // --- Lógica del Lobby ---
-        async function enterLobby() {
-            cleanUpLobbyListeners(); showScreen('lobby'); dom.userEmail.textContent = currentUser.email.split('@')[0];
-            const userStatusRef = db.ref(`status/${currentUser.uid}`);
-            await userStatusRef.set({ online: true, email: currentUser.email, inGame: false });
-            userStatusRef.onDisconnect().remove();
+        // ============================================
+        // SOUND EFFECTS
+        // ============================================
+        const sounds = {
+            countdown: () => playBeep(400, 0.1),
+            alarm: () => playBeep(800, 0.3),
+            click: () => playBeep(600, 0.05),
+            win: () => playMelody([523, 659, 784], 0.2),
+            lose: () => playMelody([392, 330, 262], 0.2),
+            draw: () => playBeep(440, 0.2)
+        };
 
-            lobbyListeners.status = db.ref('status');
-            lobbyListeners.status.on('value', snapshot => {
-                dom.onlineUsersList.innerHTML = ''; let onlineCount = 0;
-                snapshot.forEach(child => {
-                    const user = child.val(); const uid = child.key;
-                    if (user.online && !user.inGame && uid !== currentUser.uid) {
-                        onlineCount++; const li = document.createElement('li');
-                        li.innerHTML = `<span>${user.email.split('@')[0]}</span> <button>Invitar</button>`;
-                        li.querySelector('button').onclick = () => invitePlayer(uid, user.email);
-                        dom.onlineUsersList.appendChild(li);
-                    }
-                });
-                if(onlineCount === 0) dom.onlineUsersList.innerHTML = '<li>No hay jugadores disponibles.</li>';
-            });
+        function playBeep(frequency, duration) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
             
-            lobbyListeners.wallet = db.ref(`wallets/${currentUser.uid}`);
-            lobbyListeners.wallet.on('value', snapshot => {
-                const wallet = snapshot.val();
-                if(wallet) {
-                    dom.userCoins.textContent = wallet.coins || 0; dom.transactionHistory.innerHTML = '<h4>Historial Reciente</h4>';
-                    if(wallet.history) { Object.values(wallet.history).reverse().slice(0, 5).forEach(entry => { const p = document.createElement('p'); p.style.margin = '2px 0'; p.textContent = entry; dom.transactionHistory.appendChild(p); }); }
-                }
-            });
-            listenForInvitations();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + duration);
         }
-        
-        // --- Lógica de Sincronización de Partida (RECONSTRUIDA) ---
-        function invitePlayer(opponentId, opponentEmail) {
-            const bet = 5; // Apuesta fija para simplicidad
-            db.ref(`wallets/${currentUser.uid}/coins`).once('value', snapshot => {
-                if (snapshot.val() < bet) return alert("No tienes suficientes monedas.");
-                const gameId = db.ref('games').push().key;
-                const gameRef = db.ref(`games/${gameId}`);
-                gameRef.set({
-                    p1: { uid: currentUser.uid, email: currentUser.email },
-                    p2: { uid: opponentId, email: opponentEmail },
-                    bet, status: 'pending'
-                });
-                gameRef.onDisconnect().remove();
-                // NUEVA LÓGICA: Ahora el invitador también espera
-                waitForAcceptance(gameId);
+
+        function playMelody(frequencies, duration) {
+            frequencies.forEach((freq, i) => {
+                setTimeout(() => playBeep(freq, duration), i * duration * 1000);
             });
         }
 
-        function listenForInvitations() {
-            const invitationsRef = db.ref('games').orderByChild('p2/uid').equalTo(currentUser.uid);
-            lobbyListeners.invitations = invitationsRef;
-            invitationsRef.on('child_added', snapshot => {
-                const game = snapshot.val();
-                if (game && game.status === 'pending') {
-                    if (confirm(`${game.p1.email.split('@')[0]} te invita a jugar por ${game.bet} monedas.`)) {
-                        snapshot.ref.update({ status: 'accepted' });
-                        // El listener 'waitForAcceptance' se encargará de llamar a joinGame
-                    } else { snapshot.ref.remove(); }
+        // ============================================
+        // AUTHENTICATION
+        // ============================================
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                initializeUser();
+            } else {
+                showScreen('loginScreen');
+            }
+        });
+
+        async function loginWithEmail() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+
+            try {
+                // Try to sign in first, if fails, create account
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } catch (error) {
+                    if (error.code === 'auth/user-not-found') {
+                        await auth.createUserWithEmailAndPassword(email, password);
+                    } else {
+                        throw error;
+                    }
+                }
+            } catch (error) {
+                alert('Login failed: ' + error.message);
+            }
+        }
+
+        async function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                alert('Google login failed: ' + error.message);
+            }
+        }
+
+        function logout() {
+            if (currentUser) {
+                database.ref('users/' + currentUser.uid + '/status').set('offline');
+            }
+            auth.signOut();
+        }
+
+        // ============================================
+        // USER INITIALIZATION
+        // ============================================
+        async function initializeUser() {
+            const userRef = database.ref('users/' + currentUser.uid);
+            
+            // Set user status to online
+            await userRef.update({
+                email: currentUser.email,
+                status: 'online',
+                lastSeen: Date.now()
+            });
+
+            // Initialize wallet if doesn't exist
+            const snapshot = await userRef.child('wallet').once('value');
+            if (!snapshot.exists()) {
+                await userRef.update({ wallet: 100 });
+            }
+
+            // Listen for wallet changes
+            userRef.child('wallet').on('value', snapshot => {
+                const balance = snapshot.val() || 0;
+                document.getElementById('userBalance').textContent = balance;
+                document.getElementById('localPlayerBalance').textContent = '💰 ' + balance;
+            });
+
+            // Listen for incoming challenges
+            userRef.child('challenge').on('value', snapshot => {
+                const challenge = snapshot.val();
+                if (challenge && challenge.from) {
+                    pendingChallenge = challenge;
+                    showChallengeModal(challenge);
+                }
+            });
+
+            // Set user offline on disconnect
+            userRef.child('status').onDisconnect().set('offline');
+
+            document.getElementById('userName').textContent = 'Welcome, ' + (currentUser.email.split('@')[0]);
+            showScreen('lobbyScreen');
+            loadOnlineUsers();
+        }
+
+        // ============================================
+        // LOBBY FUNCTIONS
+        // ============================================
+        function loadOnlineUsers() {
+            const usersRef = database.ref('users');
+            usersRef.on('value', snapshot => {
+                const users = snapshot.val();
+                const container = document.getElementById('onlineUsers');
+                container.innerHTML = '';
+
+                if (!users) {
+                    container.innerHTML = '<p style="color: #ccc; text-align: center;">No players online</p>';
+                    return;
+                }
+
+                for (let uid in users) {
+                    if (uid !== currentUser.uid && users[uid].status === 'online') {
+                        const userDiv = document.createElement('div');
+                        userDiv.className = 'user-item';
+                        userDiv.innerHTML = `
+                            <div>
+                                <div>${users[uid].email.split('@')[0]}</div>
+                                <div style="font-size: 12px; color: #aaa;">💰 ${users[uid].wallet || 0} coins</div>
+                            </div>
+                            <button class="challenge-btn" onclick="challengeUser('${uid}')">Challenge</button>
+                        `;
+                        container.appendChild(userDiv);
+                    }
+                }
+
+                if (container.children.length === 0) {
+                    container.innerHTML = '<p style="color: #ccc; text-align: center;">No players online</p>';
                 }
             });
         }
-        
-        function waitForAcceptance(gameId) {
-            const gameRef = db.ref(`games/${gameId}`);
+
+        async function challengeUser(opponentId) {
+            sounds.click();
+            
+            // Create game room
+            const gameRef = database.ref('games').push();
+            currentGameId = gameRef.key;
+
+            await gameRef.set({
+                player1: currentUser.uid,
+                player2: opponentId,
+                status: 'pending',
+                createdAt: Date.now()
+            });
+
+            // Send challenge to opponent
+            await database.ref('users/' + opponentId + '/challenge').set({
+                from: currentUser.uid,
+                gameId: currentGameId,
+                fromEmail: currentUser.email
+            });
+
+            document.getElementById('gameStatus').textContent = 'Challenge sent! Waiting for response...';
+            showScreen('gameScreen');
+            document.getElementById('betContainer').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
+
+            // Listen for challenge response
             gameRef.on('value', snapshot => {
                 const game = snapshot.val();
                 if (game && game.status === 'accepted') {
-                    gameRef.off(); // Desactiva este listener para no entrar dos veces
-                    joinGame(gameId);
-                }
-                if (!game) { // Si el oponente rechaza, el juego se borra
-                    gameRef.off();
-                    alert("Invitación rechazada o cancelada.");
+                    startGame();
+                } else if (game && game.status === 'declined') {
+                    alert('Challenge declined');
+                    exitGame();
                 }
             });
         }
-        
-        async function joinGame(gameId) {
-            if (currentGameId) return; currentGameId = gameId;
-            cleanUpLobbyListeners(); db.ref(`status/${currentUser.uid}`).update({ inGame: true });
-            const gameRef = db.ref(`games/${gameId}`);
-            gameRef.onDisconnect().remove();
 
-            const mediaStream = await startWebRTC(gameRef);
-            if(!mediaStream) { alert("Error de permisos de cámara."); gameRef.remove(); leaveGame(); return; }
-            showScreen(null);
+        function showChallengeModal(challenge) {
+            database.ref('users/' + challenge.from).once('value', snapshot => {
+                const challenger = snapshot.val();
+                document.getElementById('challengeText').textContent = 
+                    `${challenger.email.split('@')[0]} wants to play!`;
+                document.getElementById('challengeModal').style.display = 'flex';
+            });
+        }
+
+        async function acceptChallenge() {
+            sounds.click();
+            document.getElementById('challengeModal').style.display = 'none';
             
-            const readyRef = gameRef.child('ready');
-            readyRef.child(currentUser.uid).set(true);
-            readyRef.on('value', async (readySnapshot) => {
-                if (readySnapshot.numChildren() === 2) {
-                    readyRef.off();
-                    const gameSnapshot = await gameRef.once('value');
-                    const game = gameSnapshot.val();
-                    if (!game) return;
-                    setupGameUI(game); initiateSignaling(game, gameRef); attachPersistentGameListeners(game, gameRef); startCountdown();
-                }
-            });
-        }
-        
-        // --- Lógica del Juego (Funciones de Soporte) ---
-        function setupGameUI(game) {
-            dom.betAmount.textContent = game.bet;
-            const isCaller = game.p1.uid === currentUser.uid;
-            const p1Name = game.p1.email.split('@')[0], p2Name = game.p2.email.split('@')[0];
-            dom.player1Info.textContent = `${p1Name}: ???`; dom.player2Info.textContent = `${p2Name}: ???`;
-            dom.remotePlayerName.textContent = isCaller ? p2Name : p1Name;
+            currentGameId = pendingChallenge.gameId;
+            await database.ref('games/' + currentGameId).update({ status: 'accepted' });
+            await database.ref('users/' + currentUser.uid + '/challenge').remove();
+            
+            showScreen('gameScreen');
+            startGame();
         }
 
-        async function initiateSignaling(game, gameRef) {
-            const isCaller = game.p1.uid === currentUser.uid;
-            const opponentUID = isCaller ? game.p2.uid : game.p1.uid;
-            if (isCaller) {
-                const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
-                gameRef.child('offer').set({ sdp: offer.sdp, type: offer.type });
+        async function declineChallenge() {
+            sounds.click();
+            document.getElementById('challengeModal').style.display = 'none';
+            
+            await database.ref('games/' + pendingChallenge.gameId).update({ status: 'declined' });
+            await database.ref('users/' + currentUser.uid + '/challenge').remove();
+            
+            pendingChallenge = null;
+        }
+
+        // ============================================
+        // GAME FUNCTIONS
+        // ============================================
+        async function startGame() {
+            document.getElementById('gameStatus').textContent = 'Setting up video...';
+            document.getElementById('betContainer').style.display = 'block';
+            
+            // Initialize WebRTC
+            await setupWebRTC();
+
+            // Load opponent info
+            const gameRef = database.ref('games/' + currentGameId);
+            const gameSnapshot = await gameRef.once('value');
+            const game = gameSnapshot.val();
+            
+            const opponentId = game.player1 === currentUser.uid ? game.player2 : game.player1;
+            const opponentSnapshot = await database.ref('users/' + opponentId).once('value');
+            const opponent = opponentSnapshot.val();
+            
+            document.getElementById('remotePlayerLabel').textContent = opponent.email.split('@')[0];
+            document.getElementById('remotePlayerBalance').textContent = '💰 ' + (opponent.wallet || 0);
+            
+            document.getElementById('gameStatus').textContent = 'Set your bet amount and confirm!';
+        }
+
+        async function confirmBet() {
+            const betAmount = parseInt(document.getElementById('betAmount').value);
+            
+            if (betAmount < 5) {
+                alert('Minimum bet is 5 coins!');
+                return;
             }
-            gameRef.child(isCaller ? 'answer' : 'offer').on('value', async (sdpSnapshot) => {
-                if (sdpSnapshot.exists() && !peerConnection.remoteDescription) {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdpSnapshot.val()));
-                    if (!isCaller) {
-                        const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer);
-                        gameRef.child('answer').set({ sdp: answer.sdp, type: answer.type });
-                    }
-                }
-            });
-            gameRef.child('iceCandidates').child(opponentUID).on('child_added', c => { if(c.val()) peerConnection.addIceCandidate(new RTCIceCandidate(c.val())); });
-        }
 
-        function attachPersistentGameListeners(game, gameRef) {
-            const opponentUID = game.p1.uid === currentUser.uid ? game.p2.uid : game.p1.uid;
-            db.ref(`status/${opponentUID}`).on('value', (statusSnap) => {
-                if(currentGameId && (!statusSnap.exists() || !statusSnap.val().inGame)){
-                    alert("El oponente se ha desconectado. ¡Has ganado!");
-                    gameRef.child('result').set(currentUser.uid);
-                }
-            });
+            // Check balance
+            const balanceSnapshot = await database.ref('users/' + currentUser.uid + '/wallet').once('value');
+            const balance = balanceSnapshot.val() || 0;
+            
+            if (balance < betAmount) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            sounds.click();
+            
+            const gameRef = database.ref('games/' + currentGameId);
+            const isPlayer1 = (await gameRef.child('player1').once('value')).val() === currentUser.uid;
+            
+            if (isPlayer1) {
+                await gameRef.update({ bet1: betAmount, bet1Ready: true });
+            } else {
+                await gameRef.update({ bet2: betAmount, bet2Ready: true });
+            }
+
+            document.getElementById('betContainer').style.display = 'none';
+            document.getElementById('gameStatus').textContent = 'Waiting for opponent to confirm bet...';
+
+            // Listen for both players ready
             gameRef.on('value', snapshot => {
-                const updatedGame = snapshot.val();
-                if (!updatedGame) return;
-                if(updatedGame.choices && Object.keys(updatedGame.choices).length === 2 && !updatedGame.result){ determineWinner(updatedGame); }
-                if(updatedGame.result && updatedGame.status !== 'finished'){ gameRef.update({status: 'finished'}); displayResult(updatedGame); }
+                const game = snapshot.val();
+                if (game && game.bet1Ready && game.bet2Ready && game.status !== 'countdown') {
+                    startCountdown();
+                }
             });
         }
-        
-        function startCountdown() {
-            let count = 3; dom.resultText.textContent = ''; dom.countdown.style.display = 'block';
-            const interval = setInterval(() => {
-                if(currentGameId === null) { clearInterval(interval); return; }
-                if (count > 0) { dom.countdown.textContent = count; } 
-                else { clearInterval(interval); dom.countdown.textContent = '¡YA!'; enableChoices(); setTimeout(() => dom.countdown.textContent = '', 1000); }
-                count--;
-            }, 1000);
+
+        async function startCountdown() {
+            await database.ref('games/' + currentGameId).update({ status: 'countdown' });
+            
+            document.getElementById('controls').style.display = 'none';
+            
+            for (let i = 3; i > 0; i--) {
+                document.getElementById('gameStatus').innerHTML = `<div class="countdown">${i}</div>`;
+                if (i === 1) {
+                    sounds.alarm();
+                } else {
+                    sounds.countdown();
+                }
+                await sleep(1000);
+            }
+
+            document.getElementById('gameStatus').textContent = 'Choose your move!';
+            document.getElementById('controls').style.display = 'flex';
+            
+            await database.ref('games/' + currentGameId).update({ status: 'playing' });
         }
 
-        function enableChoices() { dom.controls.forEach(btn => { btn.classList.remove('disabled', 'selected'); btn.onclick = (e) => handleChoice(e.currentTarget.id); }); }
-        function handleChoice(choice) { db.ref(`games/${currentGameId}/choices/${currentUser.uid}`).set(choice); dom.controls.forEach(btn => { btn.classList.add('disabled'); if(btn.id === choice) btn.classList.add('selected'); }); }
+        async function makeChoice(choice) {
+            sounds.click();
+            
+            // Highlight selected button
+            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById(choice + 'Btn').classList.add('selected');
 
-        function determineWinner(game) {
-            const p1 = game.p1.uid, p2 = game.p2.uid; const c1 = game.choices[p1], c2 = game.choices[p2];
-            let winner = 'draw';
-            if (c1 !== c2) { if ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'paper' && c2 === 'rock') || (c1 === 'scissors' && c2 === 'paper')) { winner = p1; } else { winner = p2; } }
-            db.ref(`games/${currentGameId}/result`).set(winner);
-        }
-        
-        function displayResult(game) {
-            dom.countdown.style.display = 'none';
-            let resultText;
-            const p1Name = game.p1.email.split('@')[0]; const p2Name = game.p2.email.split('@')[0];
-            if (game.result === 'draw') { resultText = 'EMPATE'; dom.resultText.style.color = 'var(--draw-color)'; } 
-            else if (game.result === currentUser.uid) { resultText = '¡GANASTE!'; dom.resultText.style.color = 'var(--win-color)'; } 
-            else { const winnerName = game.result === game.p1.uid ? p1Name : p2Name; resultText = `GANA ${winnerName.toUpperCase()}`; dom.resultText.style.color = 'var(--lose-color)'; }
-            dom.resultText.textContent = resultText;
-            const p1Choice = game.choices[game.p1.uid] || '...'; const p2Choice = game.choices[game.p2.uid] || '...';
-            dom.player1Info.textContent = `${p1Name}: ${p1Choice.charAt(0).toUpperCase()}`;
-            dom.player2Info.textContent = `${p2Name}: ${p2Choice.charAt(0).toUpperCase()}`;
-            updateWallets(game);
-            setTimeout(() => { if (currentGameId) leaveGame(true); }, 5000);
-        }
-        
-        function updateWallets(game) { /* ... Lógica de billetera ... */ }
-        
-        function leaveGame(shouldRemoveGame = false) {
-            if (currentUser) db.ref(`status/${currentUser.uid}`).update({ inGame: false });
-            if (currentGameId) { db.ref(`games/${currentGameId}`).off(); if (shouldRemoveGame) db.ref(`games/${currentGameId}`).remove(); }
-            cleanUpGame(); enterLobby();
+            const gameRef = database.ref('games/' + currentGameId);
+            const isPlayer1 = (await gameRef.child('player1').once('value')).val() === currentUser.uid;
+            
+            if (isPlayer1) {
+                await gameRef.update({ choice1: choice });
+            } else {
+                await gameRef.update({ choice2: choice });
+            }
+
+            document.getElementById('controls').style.display = 'none';
+            document.getElementById('gameStatus').textContent = 'Waiting for opponent...';
+
+            // Listen for both choices
+            gameRef.on('value', async snapshot => {
+                const game = snapshot.val();
+                if (game && game.choice1 && game.choice2 && game.status !== 'finished') {
+                    await determineWinner(game);
+                }
+            });
         }
 
-        function cleanUpGame(){
-            if (peerConnection) { peerConnection.close(); peerConnection = null; }
-            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-            dom.remoteVideo.srcObject = null; dom.localVideo.srcObject = null;
-            dom.resultText.textContent = ''; dom.countdown.textContent = '';
-            dom.controls.forEach(btn => btn.classList.add('disabled'));
-            dom.connectionStatus.style.display = 'none';
+        async function determineWinner(game) {
+            await database.ref('games/' + currentGameId).update({ status: 'finished' });
+            
+            const choice1 = game.choice1;
+            const choice2 = game.choice2;
+            const isPlayer1 = game.player1 === currentUser.uid;
+            
+            let result = '';
+            let winner = null;
+
+            // Determine winner
+            if (choice1 === choice2) {
+                result = 'draw';
+            } else if (
+                (choice1 === 'rock' && choice2 === 'scissors') ||
+                (choice1 === 'scissors' && choice2 === 'paper') ||
+                (choice1 === 'paper' && choice2 === 'rock')
+            ) {
+                winner = 'player1';
+            } else {
+                winner = 'player2';
+            }
+
+            // Show choices
+            const icons = { rock: '🪨', paper: '📄', scissors: '✂️' };
+            document.getElementById('gameStatus').innerHTML = `
+                <div style="display: flex; justify-content: space-around; font-size: 48px;">
+                    <div>You: ${icons[isPlayer1 ? choice1 : choice2]}</div>
+                    <div>Opponent: ${icons[isPlayer1 ? choice2 : choice1]}</div>
+                </div>
+            `;
+
+            await sleep(1500);
+
+            // Update wallets
+            const bet1 = game.bet1 || 5;
+            const bet2 = game.bet2 || 5;
+            const totalPot = bet1 + bet2;
+
+            if (result === 'draw') {
+                // Refund
+                await database.ref('users/' + game.player1 + '/wallet').transaction(current => (current || 0));
+                await database.ref('users/' + game.player2 + '/wallet').transaction(current => (current || 0));
+                
+                showResult('draw', 'It\'s a Draw!');
+                sounds.draw();
+            } else {
+                const winnerId = winner === 'player1' ? game.player1 : game.player2;
+                const loserId = winner === 'player1' ? game.player2 : game.player1;
+                
+                // Deduct from loser
+                await database.ref('users/' + loserId + '/wallet').transaction(current => {
+                    const loserBet = loserId === game.player1 ? bet1 : bet2;
+                    return Math.max(0, (current || 0) - loserBet);
+                });
+                
+                // Add to winner
+                await database.ref('users/' + winnerId + '/wallet').transaction(current => {
+                    return (current || 0) + totalPot;
+                });
+
+                if (winnerId === currentUser.uid) {
+                    showResult('win', `You Win! +${totalPot} coins`);
+                    sounds.win();
+                } else {
+                    const loserBet = currentUser.uid === game.player1 ? bet1 : bet2;
+                    showResult('lose', `You Lose! -${loserBet} coins`);
+                    sounds.lose();
+                }
+            }
+
+            // Show play again option
+            setTimeout(() => {
+                document.getElementById('resultDisplay').innerHTML += `
+                    <div style="margin-top: 20px;">
+                        <button onclick="playAgain()" class="action-btn">Play Again</button>
+                        <button onclick="exitGame()" class="action-btn secondary">Exit</button>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('resultDisplay');
+            resultDiv.className = `result-display ${type}`;
+            resultDiv.textContent = message;
+        }
+
+        async function playAgain() {
+            sounds.click();
+            
+            // Reset game state
+            await database.ref('games/' + currentGameId).remove();
+            
+            document.getElementById('resultDisplay').innerHTML = '';
+            document.getElementById('gameStatus').textContent = 'Set your bet and confirm!';
+            document.getElementById('betContainer').style.display = 'block';
+            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
+            
+            // Create new game with same opponent
+            const oldGameSnapshot = await database.ref('games/' + currentGameId).once('value');
+            const oldGame = oldGameSnapshot.val();
+            
+            if (oldGame) {
+                const gameRef = database.ref('games').push();
+                currentGameId = gameRef.key;
+                
+                await gameRef.set({
+                    player1: oldGame.player1,
+                    player2: oldGame.player2,
+                    status: 'accepted',
+                    createdAt: Date.now()
+                });
+            }
+        }
+
+        function exitGame() {
+            sounds.click();
+            
+            if (currentGameId) {
+                database.ref('games/' + currentGameId).remove();
+            }
+            
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
             currentGameId = null;
+            localStream = null;
+            peerConnection = null;
+            
+            showScreen('lobbyScreen');
         }
 
-        async function startWebRTC(gameRef) {
+        // ============================================
+        // WEBRTC SETUP
+        // ============================================
+        async function setupWebRTC() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                dom.localVideo.srcObject = localStream;
-                peerConnection = new RTCPeerConnection(servers);
-                peerConnection.onconnectionstatechange = () => {
-                    const state = peerConnection.connectionState;
-                    if (state === 'disconnected' || state === 'failed' || state === 'closed') { dom.connectionStatus.style.display = 'flex'; } 
-                    else if (state === 'connected') { dom.connectionStatus.style.display = 'none'; }
+                // Get local video stream
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+                
+                document.getElementById('localVideo').srcObject = localStream;
+
+                // Create peer connection
+                peerConnection = new RTCPeerConnection(rtcConfig);
+
+                // Add local stream to peer connection
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Handle incoming stream
+                peerConnection.ontrack = event => {
+                    document.getElementById('remoteVideo').srcObject = event.streams[0];
                 };
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                peerConnection.ontrack = e => { if (dom.remoteVideo.srcObject !== e.streams[0]) dom.remoteVideo.srcObject = e.streams[0]; };
-                peerConnection.onicecandidate = e => { if (e.candidate && currentGameId) gameRef.child('iceCandidates').child(currentUser.uid).push(e.candidate.toJSON()); };
-                return localStream;
-            } catch (e) { console.error("Error al obtener media:", e); return null; }
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        database.ref('games/' + currentGameId + '/candidates/' + currentUser.uid).push({
+                            candidate: event.candidate.toJSON()
+                        });
+                    }
+                };
+
+                // Listen for remote ICE candidates
+                database.ref('games/' + currentGameId + '/candidates').on('child_added', async snapshot => {
+                    const data = snapshot.val();
+                    for (let uid in data) {
+                        if (uid !== currentUser.uid) {
+                            for (let key in data[uid]) {
+                                const candidate = new RTCIceCandidate(data[uid][key].candidate);
+                                await peerConnection.addIceCandidate(candidate);
+                            }
+                        }
+                    }
+                });
+
+                // Determine if we should create offer
+                const gameSnapshot = await database.ref('games/' + currentGameId).once('value');
+                const game = gameSnapshot.val();
+                const isPlayer1 = game.player1 === currentUser.uid;
+
+                if (isPlayer1) {
+                    // Player 1 creates offer
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    await database.ref('games/' + currentGameId + '/offer').set({
+                        sdp: offer.sdp,
+                        type: offer.type
+                    });
+
+                    // Listen for answer
+                    database.ref('games/' + currentGameId + '/answer').on('value', async snapshot => {
+                        const answer = snapshot.val();
+                        if (answer && peerConnection.remoteDescription === null) {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                        }
+                    });
+                } else {
+                    // Player 2 creates answer
+                    database.ref('games/' + currentGameId + '/offer').on('value', async snapshot => {
+                        const offer = snapshot.val();
+                        if (offer && peerConnection.remoteDescription === null) {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+                            await database.ref('games/' + currentGameId + '/answer').set({
+                                sdp: answer.sdp,
+                                type: answer.type
+                            });
+                        }
+                    });
+                }
+
+            } catch (error) {
+                console.error('WebRTC setup error:', error);
+                alert('Could not access camera/microphone. Please grant permissions.');
+            }
         }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function showScreen(screenId) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('lobbyScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById(screenId).style.display = 'block';
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        window.addEventListener('beforeunload', () => {
+            if (currentUser) {
+                database.ref('users/' + currentUser.uid + '/status').set('offline');
+            }
+        });
+
+        // Add ambient background sound (optional)
+        function startAmbientSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.frequency.value = 60;
+            oscillator.type = 'sine';
+            gainNode.gain.value = 0.02;
+            
+            oscillator.start();
+            
+            // Stop after 30 seconds to save resources
+            setTimeout(() => oscillator.stop(), 30000);
+        }
+
+        // Start ambient sound on first user interaction
+        document.addEventListener('click', function initAudio() {
+            startAmbientSound();
+            document.removeEventListener('click', initAudio);
+        }, { once: true });
+
     </script>
 </body>
 </html>
