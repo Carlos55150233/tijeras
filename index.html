@@ -183,7 +183,6 @@
             filter: grayscale(80%);
         }
         
-        /* Screen Content Styles */
         .screen-content {
             width: 100%;
             height: 100%;
@@ -254,7 +253,6 @@
         .status-online { background-color: var(--glow-green); }
         .status-ingame { background-color: var(--glow-red); }
 
-        /* Game Screen Styles */
         #game-screen-content {
             display: flex;
             flex-direction: column;
@@ -332,7 +330,6 @@
         .result-lose { text-shadow: 0 0 20px var(--glow-red) !important; color: var(--glow-red) !important; }
         .result-draw { text-shadow: 0 0 20px var(--metal-silver) !important; color: var(--metal-silver) !important; }
 
-        /* Modal */
         .modal {
             position: absolute;
             top: 50%;
@@ -366,7 +363,6 @@
     <div id="app-container">
         <div id="game-machine">
             <div id="top-screen">
-                <!-- Login Screen -->
                 <div id="login-screen" class="screen-content">
                     <h2>Metal RPS Arena</h2>
                     <input type="email" id="email" placeholder="Email" autocomplete="email">
@@ -378,7 +374,6 @@
                     <p id="auth-error" class="hidden" style="color: var(--glow-red);"></p>
                 </div>
 
-                <!-- Lobby Screen -->
                 <div id="lobby-screen" class="screen-content hidden">
                     <h3>Lobby</h3>
                     <div id="user-info" style="margin-bottom: 10px;">
@@ -389,7 +384,6 @@
                     <button id="logout-btn">Logout</button>
                 </div>
 
-                <!-- Game Screen -->
                 <div id="game-screen" class="screen-content hidden">
                     <div id="game-screen-content">
                         <div id="game-info">
@@ -432,21 +426,12 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    
-    <!-- SimplePeer Library -->
     <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
 
     <script type="module">
-        // --- NOTA IMPORTANTE ---
-        // Este archivo DEBE ser ejecutado desde un servidor web local (http://localhost),
-        // no abriéndolo directamente desde el sistema de archivos (file://).
-        // Usa la extensión "Live Server" en VS Code o un comando como `python -m http.server`.
-
-        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
             authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
@@ -458,13 +443,11 @@
             measurementId: "G-C3VE5H0Y3S"
         };
         
-        // --- INITIALIZATION ---
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        // --- GLOBAL STATE ---
         let appState = {
             currentUser: null,
             currentUserProfile: null,
@@ -478,7 +461,6 @@
             activeInvitationListener: null,
         };
 
-        // --- DOM ELEMENTS ---
         const dom = {
             loginScreen: document.getElementById('login-screen'),
             lobbyScreen: document.getElementById('lobby-screen'),
@@ -500,7 +482,6 @@
             gameBetAmount: document.getElementById('game-bet-amount'),
         };
 
-        // --- AUDIO MANAGEMENT ---
         const sounds = {
             click: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAA//8/"),
             countdown: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACEgD8/Pz9ISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhI////"),
@@ -516,7 +497,6 @@
             }
         };
 
-        // --- UI MANAGER ---
         const ui = {
             showScreen: (screen) => {
                 [dom.loginScreen, dom.lobbyScreen, dom.gameScreen].forEach(s => s.classList.add('hidden'));
@@ -650,7 +630,6 @@
             }
         };
 
-        // --- AUTH MANAGER ---
         const authManager = {
             init: () => {
                 document.getElementById('login-btn').addEventListener('click', authManager.login);
@@ -679,7 +658,6 @@
             logout: () => auth.signOut(),
         };
 
-        // --- DATABASE MANAGER ---
         const dbManager = {
             createUserProfile: (user) => db.ref(`users/${user.uid}`).set({ uid: user.uid, displayName: user.displayName || user.email.split('@')[0], email: user.email, wallet: 100, status: 'online'}),
             onUserConnect: () => {
@@ -696,17 +674,27 @@
             listenToPlayers: () => db.ref('users').on('value', snap => ui.renderPlayers(snap.val() || {})),
             listenForInvitations: (uid) => {
                 const invitationsRef = db.ref(`invitations/${uid}`);
-                invitationsRef.on('child_added', ui.showInvitationModal);
+                invitationsRef.on('child_added', (snap) => {
+                    const invitation = snap.val();
+                    if (!invitation || !invitation.gameId) return;
+                    
+                    db.ref(`games/${invitation.gameId}`).once('value', (gameSnap) => {
+                        if (gameSnap.exists() && gameSnap.val().status === 'pending') {
+                            ui.showInvitationModal(snap);
+                        } else {
+                            snap.ref.remove();
+                        }
+                    });
+                });
+                
                 invitationsRef.on('child_removed', () => {
                     if (document.getElementById('invitation-modal')) {
                         ui.hideModal();
-                        alert("The challenge was cancelled by the host.");
                     }
                 });
             }
         };
         
-        // --- WEBRTC MANAGER (SimplePeer) ---
         const webrtc = {
             start: async () => {
                 try {
@@ -763,7 +751,6 @@
             }
         };
         
-        // --- GAME MANAGER ---
         const game = {
             init: () => {
                 dom.controlButtons.forEach(btn => {
@@ -779,6 +766,11 @@
             },
             
             sendInvitation: (opponentId, opponentName, bet) => {
+                if (bet > appState.currentUserProfile.wallet) {
+                    alert("You don't have enough coins for this bet!");
+                    return;
+                }
+
                 const gameId = db.ref('games').push().key;
                 const invitationKey = db.ref(`invitations/${opponentId}`).push().key;
 
@@ -789,7 +781,7 @@
                     status: 'pending',
                     players: {
                         p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null },
-                        p2: { uid: opponentId, displayName: opponentName, choice: null }
+                        p2: { uid: opponentId, displayName: opponentName, wallet: 0, choice: null }
                     },
                 };
 
@@ -797,14 +789,26 @@
                 const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
 
                 gameRef.set(gameData).then(() => {
-                    invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName });
+                    return invitationRef.set({ 
+                        gameId, 
+                        bet, 
+                        fromUid: appState.currentUser.uid,
+                        fromName: appState.currentUserProfile.displayName 
+                    });
+                }).then(() => {
                     ui.showWaitingModal(opponentName);
                     
                     gameRef.onDisconnect().remove();
                     invitationRef.onDisconnect().remove();
 
                     appState.activeInvitationListener = gameRef.on('value', snap => {
-                        if (snap.exists() && snap.val().status === 'active') {
+                        if (!snap.exists()) {
+                            game.cleanUpInvitationListeners();
+                            ui.hideModal();
+                            alert("The invitation was declined or cancelled.");
+                            return;
+                        }
+                        if (snap.val().status === 'active') {
                             game.cleanUpInvitationListeners();
                             game.join(gameId, true);
                         }
@@ -816,10 +820,21 @@
                 if (!appState.pendingInvitation) return;
                 const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
                 
-                db.ref(`games/${gameId}`).remove();
-                db.ref(`invitations/${opponentId}/${invitationKey}`).remove();
+                const gameRef = db.ref(`games/${gameId}`);
+                const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
                 
-                game.cleanUpInvitationListeners();
+                if (appState.activeInvitationListener) {
+                    gameRef.off('value', appState.activeInvitationListener);
+                    appState.activeInvitationListener = null;
+                }
+                
+                gameRef.onDisconnect().cancel();
+                invitationRef.onDisconnect().cancel();
+                
+                gameRef.remove();
+                invitationRef.remove();
+                
+                appState.pendingInvitation = null;
                 ui.hideModal();
             },
 
@@ -831,51 +846,57 @@
                 
                 if (appState.activeInvitationListener) {
                     gameRef.off('value', appState.activeInvitationListener);
+                    appState.activeInvitationListener = null;
                 }
                 
                 gameRef.onDisconnect().cancel();
                 invitationRef.onDisconnect().cancel();
                 
-                appState.activeInvitationListener = null;
                 appState.pendingInvitation = null;
             },
 
             declineInvitation: (gameId, invitationRef) => {
-                 db.ref(`games/${gameId}`).remove();
-                 if(invitationRef) invitationRef.remove();
+                db.ref(`games/${gameId}`).remove();
+                if(invitationRef) invitationRef.remove();
             },
 
             acceptInvitation: async (gameId, invitationRef) => {
                 const gameRef = db.ref(`games/${gameId}`);
                 try {
                     const gameSnap = await gameRef.once('value');
-                    if (!gameSnap.exists() || gameSnap.val().status !== 'pending') {
-                        alert("Failed to join game. It might have been cancelled.");
+                    if (!gameSnap.exists()) {
+                        alert("This game invitation no longer exists.");
                         if (invitationRef) invitationRef.remove();
                         return;
                     }
-                    if (appState.currentUserProfile.wallet < gameSnap.val().bet) {
+                    
+                    const gameData = gameSnap.val();
+                    if (gameData.status !== 'pending') {
+                        alert("This game is no longer available.");
+                        if (invitationRef) invitationRef.remove();
+                        return;
+                    }
+                    
+                    if (appState.currentUserProfile.wallet < gameData.bet) {
                         alert("You don't have enough coins for this challenge!");
                         game.declineInvitation(gameId, invitationRef);
                         return;
                     }
-                    const result = await gameRef.transaction(currentData => {
-                        if (currentData && currentData.status === 'pending') {
-                            currentData.status = 'active';
-                            currentData.players.p2.wallet = appState.currentUserProfile.wallet;
-                            return currentData;
-                        }
-                        return;
-                    });
-                    if (result.committed) {
-                        if (invitationRef) invitationRef.remove();
-                        game.join(gameId, false);
-                    } else {
-                        alert("Failed to join game. The host may have cancelled it at the last second.");
-                    }
+                    
+                    const updates = {};
+                    updates[`games/${gameId}/status`] = 'active';
+                    updates[`games/${gameId}/players/p2/wallet`] = appState.currentUserProfile.wallet;
+                    
+                    await db.ref().update(updates);
+                    
+                    if (invitationRef) await invitationRef.remove();
+                    
+                    game.join(gameId, false);
+                    
                 } catch (error) {
                     console.error("Error accepting invitation:", error);
                     alert("An unexpected error occurred while joining the game.");
+                    if (invitationRef) invitationRef.remove();
                 }
             },
             
@@ -890,12 +911,13 @@
                 const gameRef = db.ref(`games/${gameId}`);
                 appState.activeGameListener = gameRef.on('value', (snap) => game.stateMachine(snap.val()));
             },
+            
             stateMachine: (gameData) => {
                 if (!gameData) {
                     if (appState.currentGameId) {
                         alert("The game has ended or the opponent disconnected.");
+                        game.leave();
                     }
-                    game.leave();
                     return;
                 }
                 ui.updateGameInfo(gameData);
@@ -903,13 +925,16 @@
                 switch (gameData.status) {
                     case 'active':
                         ui.hideGameStatus();
+                        ui.showGameStatus("Connecting...", '', 0);
                         if (appState.isGameCreator) {
-                             db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
-                                const signals = snap.val();
-                                if(signals && signals.p1Signal && signals.p2Signal) {
-                                     game.startCountdown();
-                                }
-                            });
+                            setTimeout(() => {
+                                db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
+                                    const signals = snap.val();
+                                    if(signals && signals.p1Signal && signals.p2Signal) {
+                                        game.startCountdown();
+                                    }
+                                });
+                            }, 1000);
                         }
                         break;
                     case 'countdown':
@@ -932,11 +957,15 @@
                         break;
                 }
             },
+            
             startCountdown: () => {
+                if (!appState.currentGameId) return;
+                
                 const gameRef = db.ref(`games/${appState.currentGameId}`);
                 gameRef.transaction(currentData => {
                     if (currentData && currentData.status === 'active') {
                         currentData.status = 'countdown';
+                        currentData.countdown = 3;
                         return currentData;
                     }
                     return;
@@ -944,15 +973,18 @@
                     if (!result.committed) return;
                     let count = 3;
                     const interval = setInterval(() => {
-                        db.ref(`games/${appState.currentGameId}/countdown`).set(count);
+                        count--;
+                        if (count >= 0) {
+                            db.ref(`games/${appState.currentGameId}/countdown`).set(count);
+                        }
                         if (count < 0) {
                             clearInterval(interval);
                             db.ref(`games/${appState.currentGameId}/status`).set('choose');
                         }
-                        count--;
                     }, 1000);
                 });
             },
+            
             handleCountdown: (gameData) => {
                 const count = gameData.countdown;
                 if (count > 0) {
@@ -966,6 +998,7 @@
                     ui.resetControlButtons();
                 }
             },
+            
             submitChoice: () => {
                 if(!appState.currentGameId || !appState.playerChoice) return;
                 const playerKey = appState.isGameCreator ? 'p1' : 'p2';
@@ -979,6 +1012,7 @@
                 });
                 ui.resetControlButtons(true);
             },
+            
             revealResult: (gameData) => {
                 const { p1, p2 } = gameData.players;
                 if(!p1.choice || !p2.choice) return;
@@ -1016,7 +1050,9 @@
                     });
                 }
             },
+            
             getWinner: (c1, c2) => (c1 === c2) ? null : ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'scissors' && c2 === 'paper') || (c1 === 'paper' && c2 === 'rock')) ? c1 : c2,
+            
             updateWallets: (gameData, winnerChoice, p1Id, p2Id) => {
                 if (winnerChoice === null) return Promise.resolve();
                 const { bet } = gameData;
@@ -1031,6 +1067,7 @@
                     loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet))
                 ]);
             },
+            
             showPostGameOptions: () => {
                 const modalHTML = `
                     <div class="modal">
@@ -1046,6 +1083,7 @@
                     }
                 }
             },
+            
             leave: () => {
                 ui.hideModal();
                 webrtc.stop();
@@ -1066,7 +1104,6 @@
             }
         };
 
-        // --- APP INITIALIZATION ---
         function init() {
             console.log("Initializing Metal RPS Arena...");
             authManager.init();
