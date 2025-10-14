@@ -441,6 +441,11 @@
     <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
 
     <script type="module">
+        // --- NOTA IMPORTANTE ---
+        // Este archivo DEBE ser ejecutado desde un servidor web local (http://localhost),
+        // no abriéndolo directamente desde el sistema de archivos (file://).
+        // Usa la extensión "Live Server" en VS Code o un comando como `python -m http.server`.
+
         // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
@@ -662,9 +667,6 @@
                         dbManager.listenForInvitations(user.uid);
                         ui.showScreen(dom.lobbyScreen);
                     } else {
-                        // --- CORRECCIÓN CRÍTICA ---
-                        // Se elimina la llamada manual a onUserDisconnect.
-                        // El hook onDisconnect() de Firebase se encarga de esto de forma segura.
                         appState.currentUser = null;
                         appState.currentUserProfile = null;
                         ui.showScreen(dom.loginScreen);
@@ -683,14 +685,12 @@
             onUserConnect: () => {
                 const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
                 db.ref('.info/connected').on('value', snap => {
-                    if (snap.val() === false) return; // Esperar a estar realmente conectado
-                    // Esta es la forma correcta: el servidor de Firebase gestiona la desconexión
+                    if (snap.val() === false) return;
                     userStatusRef.onDisconnect().set('offline').then(() => {
                         userStatusRef.set('online');
                     });
                 });
             },
-            // Se elimina la función onUserDisconnect porque era la causa del error.
             updateUserStatus: (status) => { if(appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status); },
             listenToProfile: (uid) => db.ref(`users/${uid}`).on('value', snap => { appState.currentUserProfile = snap.val(); ui.updateLobbyHeader(); }),
             listenToPlayers: () => db.ref('users').on('value', snap => ui.renderPlayers(snap.val() || {})),
@@ -778,7 +778,6 @@
                 ui.resetControlButtons(true);
             },
             
-            // --- LÓGICA DE INVITACIÓN RECONSTRUIDA Y A PRUEBA DE FALLOS ---
             sendInvitation: (opponentId, opponentName, bet) => {
                 const gameId = db.ref('games').push().key;
                 const invitationKey = db.ref(`invitations/${opponentId}`).push().key;
