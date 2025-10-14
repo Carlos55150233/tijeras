@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Piedra, Papel, Tijeras - Batalla en Tiempo Real</title>
+    <style>
+        :root {
+            --bg-color: #1a1f25; --metal-light: #4a5568; --metal-dark: #2d3748;
+            --metal-shadow: #1c2128; --screen-bg: #0c0e10; --glow-color: #00d9ff;
+            --text-color: #e2e8f0; --win-color: #48bb78; --lose-color: #f56565; --draw-color: #ecc94b;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap');
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Roboto', sans-serif; background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 0; display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; overflow: hidden; background: radial-gradient(circle, #2a333d 0%, var(--bg-color) 100%);
+        }
+        #app-container {
+            width: 100%; max-width: 500px; height: 100vh; max-height: 950px;
+            background: linear-gradient(145deg, var(--metal-light), var(--metal-dark));
+            border-radius: 25px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7), inset 0 2px 5px rgba(255, 255, 255, 0.1), inset 0 -2px 5px rgba(0, 0, 0, 0.5);
+            padding: 20px; position: relative; display: flex; flex-direction: column; border: 3px solid var(--metal-shadow);
+        }
+        .screen-bezel { background: #222; padding: 8px; border-radius: 18px; clip-path: polygon(5% 0, 95% 0, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0 95%, 0 5%); box-shadow: inset 0 0 15px #000; }
+        #screen {
+            background: var(--screen-bg); border: 2px solid #000; padding: 10px; flex-grow: 1; display: flex; flex-direction: column;
+            clip-path: polygon(5% 0, 95% 0, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0 95%, 0 5%); position: relative; overflow: hidden;
+        }
+        #screen::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 50%); pointer-events: none; }
+        #game-info { display: flex; justify-content: space-between; font-size: 0.8em; padding: 5px; background: rgba(0,0,0,0.3); border-radius: 5px; font-family: 'Orbitron', sans-serif; }
+        #video-container { display: flex; gap: 10px; flex-grow: 1; margin-top: 10px; position: relative; }
+        .video-player { width: 50%; background: #111; border: 2px solid var(--metal-dark); border-radius: 8px; overflow: hidden; position: relative; transition: transform 0.3s ease; }
+        .video-player video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .player-name { position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 3px; font-size: 0.7em; }
+        #game-status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-family: 'Orbitron', sans-serif; color: var(--glow-color); text-shadow: 0 0 15px var(--glow-color); z-index: 10; pointer-events: none;}
+        #countdown { font-size: 6em; font-weight: 700; }
+        #result-text { font-size: 2.5em; font-weight: 700; text-transform: uppercase; animation: fadeInZoom 0.5s ease-out; }
+        @keyframes fadeInZoom { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        #controls { display: flex; justify-content: space-around; padding: 20px 0; gap: 15px; }
+        .control-btn {
+            flex-grow: 1; padding: 15px; font-size: 2.5em; border-radius: 50%; border: 3px solid var(--metal-dark);
+            background: linear-gradient(145deg, var(--metal-light), var(--metal-dark));
+            box-shadow: 0 5px 10px var(--metal-shadow), inset 0 1px 2px rgba(255,255,255,0.2);
+            cursor: pointer; transition: all 0.1s ease-out; color: var(--text-color);
+        }
+        .control-btn:hover { border-color: var(--glow-color); box-shadow: 0 0 15px var(--glow-color), 0 0 25px var(--glow-color), inset 0 1px 2px rgba(255,255,255,0.2); }
+        .control-btn:active, .control-btn.selected { transform: translateY(2px) scale(0.98); box-shadow: 0 2px 5px var(--metal-shadow), inset 0 0 10px var(--glow-color); background: var(--metal-dark); border-color: var(--glow-color); }
+        .control-btn.disabled { opacity: 0.5; pointer-events: none; }
+        .screen-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(12, 14, 16, 0.95); z-index: 100;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .screen-overlay.active { opacity: 1; pointer-events: all; }
+        .screen-overlay h2 { font-family: 'Orbitron', sans-serif; color: var(--glow-color); margin-bottom: 20px; }
+        .screen-overlay form { width: 100%; display: flex; flex-direction: column; align-items: center;}
+        .screen-overlay input { width: 100%; max-width: 300px; padding: 12px; margin: 8px 0; border-radius: 5px; border: 1px solid var(--metal-light); background: #1a1f25; color: var(--text-color); font-size: 1em; }
+        .screen-overlay button { width: 100%; max-width: 300px; padding: 12px 20px; margin-top: 15px; border: none; border-radius: 5px; background: var(--glow-color); color: var(--bg-color); font-size: 1.1em; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .screen-overlay button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 15px var(--glow-color); }
+        .screen-overlay button:disabled { background: var(--metal-light); cursor: not-allowed; transform: none; box-shadow: none; }
+        .screen-overlay p a { color: var(--glow-color); cursor: pointer; }
+        #online-users-list { list-style: none; padding: 0; width: 100%; max-height: 200px; overflow-y: auto; }
+        #online-users-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; margin: 5px 0; background: var(--metal-dark); border-radius: 5px; }
+        #transaction-history { width: 100%; font-size: 0.8em; max-height: 100px; overflow-y: auto; margin-top: 15px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 5px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div class="screen-bezel"><div id="screen">
+            <div id="game-info">
+                <span id="player1-info">JUGADOR 1: ---</span>
+                <span>APUESTA: <span id="bet-amount">0</span></span>
+                <span id="player2-info">JUGADOR 2: ---</span>
+            </div>
+            <div id="video-container">
+                <div class="video-player"><video id="localVideo" autoplay muted playsinline></video><span class="player-name">Tú</span></div>
+                <div class="video-player"><video id="remoteVideo" autoplay playsinline></video><span id="remotePlayerName" class="player-name">Oponente</span></div>
+            </div>
+            <div id="game-status"><div id="countdown"></div><div id="result-text"></div></div>
+        </div></div>
+        <div id="controls">
+            <button class="control-btn disabled" id="rock">🪨</button>
+            <button class="control-btn disabled" id="paper">📄</button>
+            <button class="control-btn disabled" id="scissors">✂️</button>
+        </div>
+        <div id="auth-screen" class="screen-overlay active">
+            <form id="login-form">
+                <h2>ACCESO</h2>
+                <input type="email" id="email" placeholder="Correo electrónico" autocomplete="email" required>
+                <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
+                <button type="submit" id="login-btn">Ingresar</button>
+            </form>
+            <button id="google-login-btn">Ingresar con Google</button>
+            <p>¿No tienes cuenta? <a id="show-signup">Regístrate</a></p>
+        </div>
+        <div id="signup-screen" class="screen-overlay">
+            <form id="signup-form">
+                <h2>REGISTRO</h2>
+                <input type="email" id="signup-email" placeholder="Correo electrónico" autocomplete="email" required>
+                <input type="password" id="signup-password" placeholder="Contraseña" autocomplete="new-password" required>
+                <button type="submit" id="signup-btn">Crear Cuenta</button>
+            </form>
+            <p>¿Ya tienes cuenta? <a id="show-login">Ingresa</a></p>
+        </div>
+        <div id="lobby-screen" class="screen-overlay">
+            <h2>LOBBY</h2>
+            <p>Bienvenido, <b id="user-email"></b></p>
+            <p>Monedas: 🪙<b id="user-coins">0</b></p>
+            <hr style="width: 80%; border-color: var(--metal-light);">
+            <h3>Usuarios en Línea</h3>
+            <ul id="online-users-list"><li>Buscando jugadores...</li></ul>
+            <div id="transaction-history"></div>
+            <button id="logout-btn">Salir</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
+            authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
+            projectId: "piedra-papel-o-tijeras-5ae53",
+            storageBucket: "piedra-papel-o-tijeras-5ae53.appspot.com",
+            messagingSenderId: "394850327081",
+            appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
+            measurementId: "G-C3VE5H0Y3S"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        let currentUser = null, currentGameId = null, localStream, peerConnection;
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+        const dom = {
+            auth: document.getElementById('auth-screen'), signup: document.getElementById('signup-screen'), lobby: document.getElementById('lobby-screen'),
+            controls: document.querySelectorAll('.control-btn'), countdown: document.getElementById('countdown'), resultText: document.getElementById('result-text'),
+            localVideo: document.getElementById('localVideo'), remoteVideo: document.getElementById('remoteVideo'), onlineUsersList: document.getElementById('online-users-list'),
+            userEmail: document.getElementById('user-email'), userCoins: document.getElementById('user-coins'), betAmount: document.getElementById('bet-amount'),
+            player1Info: document.getElementById('player1-info'), player2Info: document.getElementById('player2-info'), remotePlayerName: document.getElementById('remotePlayerName'),
+            transactionHistory: document.getElementById('transaction-history'), loginForm: document.getElementById('login-form'), signupForm: document.getElementById('signup-form'),
+            loginBtn: document.getElementById('login-btn'), signupBtn: document.getElementById('signup-btn'),
+        };
+        
+        const sounds = {
+            click: new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."), // Placeholder
+            countdown: new Audio("data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQQAAAAA"),
+            alarm: new Audio("data:audio/wav;base64,UklGRkoBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YUYAAAAA//8CAPwA/AD8AP8A/wD//v8A/AD/AP8A/AD8AP8A/wD/AP8A/wD//v8A//7/AP8A/AD/AP8A/wD//v8A/AD8AP8A/wD/AP8A/wD/"),
+            win: new Audio("data:audio/wav;base64,UklGRjQBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YRAAAAAA6u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7g=="),
+            lose: new Audio("data:audio/wav;base64,UklGRjABAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQwAAAAA/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+"),
+            draw: new Audio("data:audio/wav;base64,UklGRjABAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQwAAAAAampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqa")
+        };
+        const ambientHum = new Audio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YgAAAAA=");
+        ambientHum.loop = true; ambientHum.volume = 0.05;
+
+        // --- Lógica Principal ---
+        
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) { currentUser = user; ambientHum.play().catch(e => {}); enterLobby(); } 
+            else { currentUser = null; ambientHum.pause(); showScreen('auth'); cleanUpGame(); }
+        });
+
+        dom.loginForm.addEventListener('submit', e => {
+            e.preventDefault(); setButtonLoading(dom.loginBtn, true, 'Ingresar');
+            auth.signInWithEmailAndPassword(dom.loginForm.email.value, dom.loginForm.password.value)
+              .catch(err => alert(`Error: ${err.message}`)).finally(() => setButtonLoading(dom.loginBtn, false, 'Ingresar'));
+        });
+        
+        document.getElementById('google-login-btn').addEventListener('click', () => {
+            if (isMobileDevice()) {
+                auth.signInWithRedirect(googleProvider);
+            } else {
+                auth.signInWithPopup(googleProvider).catch(err => alert(`Error de inicio de sesión con Google: ${err.message}`));
+            }
+        });
+
+        dom.signupForm.addEventListener('submit', e => {
+            e.preventDefault(); setButtonLoading(dom.signupBtn, true, 'Crear Cuenta');
+            auth.createUserWithEmailAndPassword(dom.signupForm['signup-email'].value, dom.signupForm['signup-password'].value)
+              .then(cred => { db.ref(`wallets/${cred.user.uid}`).set({ coins: 100, history: { "0": "¡Bienvenido! Recibes 100 monedas." } }); })
+              .catch(err => alert(`Error: ${err.message}`)).finally(() => setButtonLoading(dom.signupBtn, false, 'Crear Cuenta'));
+        });
+        document.getElementById('logout-btn').addEventListener('click', () => { if (currentUser) db.ref(`status/${currentUser.uid}`).remove(); auth.signOut(); });
+        document.getElementById('show-signup').addEventListener('click', () => showScreen('signup'));
+        document.getElementById('show-login').addEventListener('click', () => showScreen('auth'));
+
+        function setButtonLoading(button, isLoading, originalText) {
+            button.disabled = isLoading;
+            button.textContent = isLoading ? 'Procesando...' : originalText;
+        }
+
+        function showScreen(screenName) {
+            ['auth', 'signup', 'lobby'].forEach(s => dom[s].classList.remove('active'));
+            if (dom[screenName]) dom[screenName].classList.add('active');
+        }
+
+        async function enterLobby() {
+            showScreen('lobby'); dom.userEmail.textContent = currentUser.email.split('@')[0];
+            const userStatusRef = db.ref(`status/${currentUser.uid}`);
+            await userStatusRef.set({ online: true, email: currentUser.email });
+            userStatusRef.onDisconnect().remove();
+
+            db.ref('status').on('value', snapshot => {
+                dom.onlineUsersList.innerHTML = ''; let onlineCount = 0;
+                snapshot.forEach(child => {
+                    const user = child.val(); const uid = child.key;
+                    if (user.online && !user.inGame && uid !== currentUser.uid) {
+                        onlineCount++;
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span>${user.email.split('@')[0]}</span> <button>Invitar</button>`;
+                        li.querySelector('button').onclick = () => invitePlayer(uid, user.email);
+                        dom.onlineUsersList.appendChild(li);
+                    }
+                });
+                if(onlineCount === 0) dom.onlineUsersList.innerHTML = '<li>No hay otros jugadores disponibles.</li>';
+            });
+            
+            db.ref(`wallets/${currentUser.uid}`).on('value', snapshot => {
+                const wallet = snapshot.val();
+                if(wallet) {
+                    dom.userCoins.textContent = wallet.coins || 0;
+                    dom.transactionHistory.innerHTML = '<h4>Historial Reciente</h4>';
+                    if(wallet.history) {
+                        Object.values(wallet.history).reverse().slice(0, 5).forEach(entry => {
+                            const p = document.createElement('p'); p.style.margin = '2px 0'; p.textContent = entry; dom.transactionHistory.appendChild(p);
+                        });
+                    }
+                }
+            });
+            listenForInvitations();
+        }
+        
+        function invitePlayer(opponentId, opponentEmail) {
+            const bet = parseInt(prompt("Ingresa tu apuesta (mínimo 5 monedas):", "5"));
+            if (isNaN(bet) || bet < 5) return alert("Apuesta no válida.");
+            db.ref(`wallets/${currentUser.uid}/coins`).once('value', snapshot => {
+                if (snapshot.val() < bet) return alert("No tienes suficientes monedas.");
+                const gameId = db.ref('games').push().key;
+                db.ref(`games/${gameId}`).set({
+                    p1: { uid: currentUser.uid, email: currentUser.email }, p2: { uid: opponentId, email: opponentEmail },
+                    bet, status: 'pending', createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                joinGame(gameId);
+            });
+        }
+
+        function listenForInvitations() {
+            const gamesRef = db.ref('games');
+            gamesRef.orderByChild('p2/uid').equalTo(currentUser.uid).on('child_added', snapshot => {
+                const game = snapshot.val();
+                if (game && game.status === 'pending') {
+                    if (confirm(`${game.p1.email} te ha invitado a jugar por ${game.bet} monedas. ¿Aceptar?`)) {
+                        db.ref(`wallets/${currentUser.uid}/coins`).once('value', walletSnap => {
+                            if (walletSnap.val() < game.bet) { alert("No tienes suficientes monedas para aceptar."); snapshot.ref.remove(); } 
+                            else { snapshot.ref.update({ status: 'accepted' }); joinGame(snapshot.key); }
+                        });
+                    } else { snapshot.ref.remove(); }
+                }
+            });
+        }
+        
+        async function joinGame(gameId) {
+            if (currentGameId) return;
+            currentGameId = gameId;
+            db.ref(`status/${currentUser.uid}`).update({ inGame: gameId });
+            const mediaStream = await startWebRTC();
+            if(!mediaStream) {
+                alert("No se pudo iniciar el juego porque no se concedieron los permisos de cámara/micrófono.");
+                db.ref(`games/${gameId}`).remove();
+                leaveGame();
+                return;
+            }
+
+            const gameRef = db.ref(`games/${gameId}`);
+            
+            gameRef.on('value', async (snapshot) => {
+                const game = snapshot.val();
+                if (!game || !game.p1 || !game.p2) { if(currentGameId) alert('El juego ha finalizado o fue cancelado.'); leaveGame(); return; }
+
+                const isCaller = game.p1.uid === currentUser.uid;
+                const opponentUID = isCaller ? game.p2.uid : game.p1.uid;
+                db.ref(`status/${opponentUID}`).on('value', (statusSnap) => {
+                    if(!statusSnap.exists() && game.status !== 'finished' && game.started){
+                        alert("El oponente se ha desconectado. ¡Has ganado!");
+                        gameRef.child('result').set(currentUser.uid);
+                    }
+                });
+
+                if (game.status === 'accepted' && !game.started) {
+                    gameRef.update({ started: true }); showScreen(null);
+                    dom.betAmount.textContent = game.bet;
+                    const p1Name = game.p1.email.split('@')[0], p2Name = game.p2.email.split('@')[0];
+                    dom.player1Info.textContent = `${p1Name}: ???`; dom.player2Info.textContent = `${p2Name}: ???`;
+                    dom.remotePlayerName.textContent = isCaller ? p2Name : p1Name;
+
+                    if (isCaller) {
+                        const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
+                        gameRef.child('offer').set({ sdp: offer.sdp, type: offer.type });
+                    }
+                    gameRef.child(isCaller ? 'answer' : 'offer').on('value', async (sdpSnapshot) => {
+                        if (sdpSnapshot.exists() && !peerConnection.remoteDescription) {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(sdpSnapshot.val()));
+                            if (!isCaller) {
+                                const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer);
+                                gameRef.child('answer').set({ sdp: answer.sdp, type: answer.type });
+                            }
+                        }
+                    });
+                    gameRef.child('iceCandidates').child(opponentUID).on('child_added', c => { if(c.val()) peerConnection.addIceCandidate(new RTCIceCandidate(c.val())); });
+                    startCountdown();
+                }
+                
+                if(game.choices && Object.keys(game.choices).length === 2 && !game.result){ determineWinner(game); }
+                if(game.result && game.status !== 'finished'){ gameRef.update({status: 'finished'}); displayResult(game); }
+            });
+        }
+        
+        function startCountdown() {
+            let count = 3; dom.resultText.textContent = ''; dom.countdown.style.display = 'block';
+            const interval = setInterval(() => {
+                if(currentGameId === null) { clearInterval(interval); return; }
+                if (count > 0) { sounds.countdown.play(); dom.countdown.textContent = count; } 
+                else { clearInterval(interval); sounds.alarm.play(); dom.countdown.textContent = '¡YA!'; enableChoices(); setTimeout(() => dom.countdown.textContent = '', 1000); }
+                count--;
+            }, 1000);
+        }
+
+        function enableChoices() {
+            dom.controls.forEach(btn => {
+                btn.classList.remove('disabled', 'selected'); btn.onclick = (e) => handleChoice(e.currentTarget.id);
+            });
+        }
+        
+        function handleChoice(choice) {
+            sounds.click.play(); db.ref(`games/${currentGameId}/choices/${currentUser.uid}`).set(choice);
+            dom.controls.forEach(btn => { btn.classList.add('disabled'); if(btn.id === choice) btn.classList.add('selected'); });
+        }
+
+        function determineWinner(game) {
+            const p1 = game.p1.uid, p2 = game.p2.uid; const c1 = game.choices[p1], c2 = game.choices[p2];
+            let winner = 'draw';
+            if (c1 !== c2) {
+                if ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'paper' && c2 === 'rock') || (c1 === 'scissors' && c2 === 'paper')) { winner = p1; } 
+                else { winner = p2; }
+            }
+            db.ref(`games/${currentGameId}/result`).set(winner);
+        }
+        
+        function displayResult(game) {
+            dom.countdown.style.display = 'none';
+            let result;
+            if (game.result === 'draw') { result = 'EMPATE'; dom.resultText.style.color = 'var(--draw-color)'; sounds.draw.play(); } 
+            else if (game.result === currentUser.uid) { result = '¡GANASTE!'; dom.resultText.style.color = 'var(--win-color)'; sounds.win.play(); } 
+            else { result = 'PERDISTE'; dom.resultText.style.color = 'var(--lose-color)'; sounds.lose.play(); }
+            dom.resultText.textContent = result;
+            const p1Choice = game.choices[game.p1.uid] || '...'; const p2Choice = game.choices[game.p2.uid] || '...';
+            dom.player1Info.textContent = `${game.p1.email.split('@')[0]}: ${p1Choice.charAt(0).toUpperCase()}`;
+            dom.player2Info.textContent = `${game.p2.email.split('@')[0]}: ${p2Choice.charAt(0).toUpperCase()}`;
+            updateWallets(game);
+            setTimeout(leaveGame, 4000);
+        }
+        
+        function updateWallets(game) {
+            const p1Ref = db.ref(`wallets/${game.p1.uid}`), p2Ref = db.ref(`wallets/${game.p2.uid}`), bet = game.bet;
+            const p1Name = game.p1.email.split('@')[0], p2Name = game.p2.email.split('@')[0];
+            if (game.result === 'draw') {
+                p1Ref.child('history').push(`Empate vs ${p2Name}. ${bet} monedas devueltas.`);
+                p2Ref.child('history').push(`Empate vs ${p1Name}. ${bet} monedas devueltas.`);
+            } else {
+                const winnerIsP1 = game.result === game.p1.uid;
+                const [winnerRef, loserRef] = winnerIsP1 ? [p1Ref, p2Ref] : [p1Ref, p2Ref];
+                const [winnerName, loserName] = winnerIsP1 ? [p1Name, p2Name] : [p2Name, p1Name];
+                winnerRef.child('coins').transaction(c => (c || 0) + bet);
+                loserRef.child('coins').transaction(c => (c || 0) - bet);
+                winnerRef.child('history').push(`Ganaste ${bet} monedas contra ${loserName}.`);
+                loserRef.child('history').push(`Perdiste ${bet} monedas contra ${winnerName}.`);
+            }
+        }
+        
+        function leaveGame() {
+            if(currentUser) db.ref(`status/${currentUser.uid}`).update({ inGame: false });
+            if(currentGameId) { db.ref(`games/${currentGameId}`).off(); }
+            cleanUpGame(); enterLobby();
+        }
+
+        function cleanUpGame(){
+            if (peerConnection) { peerConnection.close(); peerConnection = null; }
+            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+            dom.remoteVideo.srcObject = null; dom.localVideo.srcObject = null;
+            dom.resultText.textContent = ''; dom.countdown.textContent = '';
+            dom.controls.forEach(btn => btn.classList.add('disabled'));
+            currentGameId = null;
+        }
+
+        async function startWebRTC() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                dom.localVideo.srcObject = localStream;
+                peerConnection = new RTCPeerConnection(servers);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                peerConnection.ontrack = e => { if (dom.remoteVideo.srcObject !== e.streams[0]) dom.remoteVideo.srcObject = e.streams[0]; };
+                peerConnection.onicecandidate = e => { if (e.candidate && currentGameId) db.ref(`games/${currentGameId}/iceCandidates/${currentUser.uid}`).push(e.candidate.toJSON()); };
+                return localStream;
+            } catch (e) {
+                // No mostramos la alerta aquí, devolvemos null para que la función joinGame la maneje.
+                console.error("Error al obtener media:", e);
+                return null;
+            }
+        }
+    </script>
+</body>
+</html>
