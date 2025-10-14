@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rock Paper Scissors - Live Battle Arena</title>
+    <title>Rock Paper Scissors - Live Battle</title>
     <style>
         * {
             margin: 0;
@@ -11,35 +11,124 @@
             box-sizing: border-box;
         }
 
-        /* MEJORA 4: Evitar el scroll en la página */
-        html, body {
-            height: 100%;
-            overflow: hidden; 
+        body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            color: #fff;
+            overflow-x: hidden;
         }
 
         /* Login Screen */
         #loginScreen {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
+            background: linear-gradient(145deg, #2a2a3e, #1f1f2e);
             padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             max-width: 400px;
             width: 90%;
         }
 
         #loginScreen h1 {
-            color: #fff;
+            font-size: 2em;
             margin-bottom: 30px;
-            font-size: 28px;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+
+        /* Added styles for login/signup forms */
+        .auth-form {
+            margin: 20px 0;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(0, 212, 255, 0.8);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .divider {
+            margin: 20px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .divider span {
+            background: linear-gradient(145deg, #2a2a3e, #1f1f2e);
+            padding: 0 15px;
+            position: relative;
+            z-index: 1;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .toggle-auth {
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9em;
+        }
+
+        .toggle-auth a {
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .toggle-auth a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: rgba(255, 51, 102, 0.2);
+            border: 1px solid rgba(255, 51, 102, 0.5);
+            color: #ff3366;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .success-message {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+            color: #00ff88;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 0.9em;
         }
 
         .login-btn {
@@ -48,66 +137,81 @@
             margin: 10px 0;
             border: none;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 1em;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(145deg, #0099ff, #0077cc);
             color: white;
+            box-shadow: 0 5px 15px rgba(0, 153, 255, 0.3);
         }
 
         .login-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 153, 255, 0.5);
+        }
+
+        /* Added disabled button style */
+        .login-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* Lobby Screen */
         #lobbyScreen {
-            display: none;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
+            background: linear-gradient(145deg, #2a2a3e, #1f1f2e);
             padding: 30px;
-            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
             width: 90%;
         }
 
         .user-info {
-            color: #fff;
             text-align: center;
             margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
         }
 
-        .wallet {
-            font-size: 32px;
+        .wallet-balance {
+            font-size: 2em;
             color: #ffd700;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
             margin: 10px 0;
         }
 
-        .online-users {
-            max-height: 300px;
-            overflow-y: auto;
+        /* Added invitation notification area */
+        #invitationContainer {
+            background: rgba(0, 212, 255, 0.2);
+            border: 2px solid rgba(0, 212, 255, 0.5);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .online-players {
             margin: 20px 0;
         }
 
-        .user-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 10px;
+        .player-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #fff;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 153, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 153, 255, 0.3);
         }
 
         .challenge-btn {
-            padding: 8px 20px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 10px 20px;
+            background: linear-gradient(145deg, #00ff88, #00cc66);
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             color: white;
             font-weight: bold;
             cursor: pointer;
@@ -116,89 +220,63 @@
 
         .challenge-btn:hover {
             transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
         }
 
         /* Game Machine */
         #gameScreen {
             display: none;
-            position: relative;
+            max-width: 800px;
+            width: 95%;
+            margin: 20px auto;
         }
 
         .game-machine {
-            width: 90vw;
-            max-width: 800px;
-            background: linear-gradient(135deg, #2c3e50, #34495e, #2c3e50);
-            border: 3px solid #95a5a6;
+            background: linear-gradient(145deg, #3a3a4e, #2a2a3e);
             border-radius: 30px;
             padding: 30px;
-            box-shadow: 
-                0 10px 40px rgba(0, 0, 0, 0.5),
-                inset 0 2px 10px rgba(255, 255, 255, 0.1),
-                inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7),
+                        inset 0 2px 0 rgba(255, 255, 255, 0.1),
+                        inset 0 -2px 0 rgba(0, 0, 0, 0.5);
             position: relative;
         }
 
-        /* TV Screen (octagonal) */
-        .tv-screen {
-            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-            border: 5px solid #7f8c8d;
+        /* Octagonal Screen */
+        .game-screen {
+            background: linear-gradient(145deg, #1a1a2e, #0f0f1e);
+            border-radius: 20px;
             padding: 20px;
             margin-bottom: 30px;
+            min-height: 400px;
             position: relative;
             clip-path: polygon(15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%, 0% 15%);
-            box-shadow: 
-                inset 0 0 20px rgba(0, 0, 0, 0.8),
-                0 0 20px rgba(0, 212, 255, 0.3);
-            min-height: 400px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            box-shadow: inset 0 5px 20px rgba(0, 0, 0, 0.8),
+                        0 0 30px rgba(0, 212, 255, 0.2);
         }
 
-        /* Video Container */
         .video-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            width: 100%;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
             margin-bottom: 20px;
         }
 
-        .player-video {
+        .video-wrapper {
+            flex: 1;
+            min-width: 200px;
+            max-width: 350px;
             position: relative;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            aspect-ratio: 16/9;
         }
 
-        .player-video video {
+        .player-video {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
+            height: 250px;
             background: #000;
-        }
-        
-        /* MEJORA 3: Efecto espejo para la cámara local (modo selfie) */
-        #localVideo {
-            transform: scaleX(-1);
-        }
-
-        .mute-icon {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            color: white;
-            background-color: rgba(0, 0, 0, 0.6);
-            padding: 20px;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 20;
-            display: none;
+            border-radius: 15px;
+            object-fit: cover;
+            border: 3px solid rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
         }
 
         .player-label {
@@ -206,41 +284,39 @@
             top: 10px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            z-index: 10;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
         }
 
         .player-balance {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
+            top: 10px;
+            right: 10px;
             background: rgba(255, 215, 0, 0.9);
             color: #000;
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
             font-weight: bold;
-            font-size: 14px;
-            z-index: 10;
         }
 
-        /* Game Status */
         .game-status {
-            color: #fff;
             text-align: center;
-            font-size: 24px;
+            padding: 20px;
+            font-size: 1.5em;
             font-weight: bold;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
             margin: 20px 0;
         }
 
         .countdown {
-            font-size: 72px;
-            color: #ff6b6b;
-            text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
-            animation: pulse 0.5s ease-in-out infinite;
+            font-size: 4em;
+            color: #ff3366;
+            text-shadow: 0 0 30px rgba(255, 51, 102, 0.8);
+            animation: pulse 1s infinite;
         }
 
         @keyframes pulse {
@@ -251,182 +327,163 @@
         /* Control Buttons */
         .controls {
             display: flex;
-            justify-content: space-around;
             gap: 20px;
+            justify-content: center;
             flex-wrap: wrap;
+            margin-top: 30px;
         }
 
-        .choice-btn {
+        .game-btn {
             flex: 1;
             min-width: 150px;
+            max-width: 200px;
             padding: 30px 20px;
-            background: linear-gradient(135deg, #3a3a3a, #2d2d2d);
-            border: 3px solid #7f8c8d;
+            background: linear-gradient(145deg, #4a4a5e, #3a3a4e);
+            border: 3px solid rgba(0, 212, 255, 0.3);
             border-radius: 20px;
-            color: #fff;
-            font-size: 48px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 
-                0 5px 15px rgba(0, 0, 0, 0.3),
-                inset 0 2px 5px rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
             position: relative;
             overflow: hidden;
         }
 
-        .choice-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(0, 212, 255, 0.3);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.3s, height 0.3s;
-        }
-
-        .choice-btn:hover::before {
-            width: 200%;
-            height: 200%;
-        }
-
-        .choice-btn:hover {
+        .game-btn:hover {
             transform: translateY(-5px);
-            box-shadow: 
-                0 10px 30px rgba(0, 212, 255, 0.5),
-                inset 0 2px 5px rgba(255, 255, 255, 0.2);
-            border-color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.8);
+            box-shadow: 0 15px 40px rgba(0, 212, 255, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
-        .choice-btn.selected {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-color: #00d4ff;
-            box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+        .game-btn.selected {
+            background: linear-gradient(145deg, #00d4ff, #0099ff);
+            border-color: #00ff88;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.8);
         }
 
-        .choice-btn span {
-            position: relative;
-            z-index: 1;
+        .game-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        /* Bet Input */
-        .bet-container {
-            text-align: center;
-            margin: 20px 0;
-        }
-
-        .bet-input {
-            padding: 15px;
-            font-size: 18px;
-            border: 2px solid #7f8c8d;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            text-align: center;
-            width: 200px;
-            margin: 10px;
+        .btn-icon {
+            font-size: 2em;
+            display: block;
+            margin-bottom: 10px;
         }
 
         /* Result Display */
         .result-display {
             text-align: center;
-            color: #fff;
-            font-size: 36px;
+            padding: 40px;
+            font-size: 2em;
             font-weight: bold;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 20px 0;
-            animation: slideIn 0.5s ease-out;
+            animation: fadeIn 0.5s;
         }
 
         .result-display.win {
-            background: linear-gradient(135deg, #11998e, #38ef7d);
-            box-shadow: 0 0 30px rgba(56, 239, 125, 0.6);
+            color: #00ff88;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
         }
 
         .result-display.lose {
-            background: linear-gradient(135deg, #eb3349, #f45c43);
-            box-shadow: 0 0 30px rgba(235, 51, 73, 0.6);
+            color: #ff3366;
+            text-shadow: 0 0 30px rgba(255, 51, 102, 0.8);
         }
 
         .result-display.draw {
-            background: linear-gradient(135deg, #f2994a, #f2c94c);
-            box-shadow: 0 0 30px rgba(242, 153, 74, 0.6);
+            color: #ffd700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
         }
 
-        /* Action Buttons */
+        /* Bet Input */
+        .bet-container {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .bet-input {
+            padding: 15px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 212, 255, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            text-align: center;
+            width: 200px;
+            margin: 10px;
+        }
+
         .action-btn {
             padding: 15px 30px;
             margin: 10px;
+            background: linear-gradient(145deg, #00ff88, #00cc66);
             border: none;
             border-radius: 10px;
-            font-size: 16px;
+            color: white;
             font-weight: bold;
+            font-size: 1em;
             cursor: pointer;
             transition: all 0.3s;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
         }
 
         .action-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
         }
 
-        .action-btn.secondary {
-            background: linear-gradient(135deg, #f093fb, #f5576c);
+        .action-btn.cancel {
+            background: linear-gradient(145deg, #ff3366, #cc0033);
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .game-machine {
-                padding: 20px;
-            }
-
-            .tv-screen {
+            .game-screen {
                 min-height: 300px;
-                padding: 15px;
             }
 
-            .choice-btn {
+            .player-video {
+                height: 180px;
+            }
+
+            .game-btn {
                 min-width: 100px;
-                padding: 20px 10px;
-                font-size: 36px;
+                padding: 20px 15px;
+                font-size: 1em;
+            }
+
+            .btn-icon {
+                font-size: 1.5em;
             }
 
             .countdown {
-                font-size: 48px;
+                font-size: 3em;
             }
+        }
 
-            .game-status {
-                font-size: 18px;
-            }
-
-            .video-container {
-                grid-template-columns: 1fr;
-            }
+        .hidden {
+            display: none !important;
         }
 
         /* Loading Spinner */
         .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
+            border: 4px solid rgba(255, 255, 255, 0.1);
             border-top: 4px solid #00d4ff;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
             margin: 20px auto;
         }
@@ -436,132 +493,156 @@
             100% { transform: rotate(360deg); }
         }
 
-        .hidden {
-            display: none !important;
+        /* Transaction History */
+        .history-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
         }
 
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        .history-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 0.9em;
         }
 
-        .modal-content {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            border: 3px solid #95a5a6;
-            border-radius: 20px;
-            padding: 30px;
-            text-align: center;
-            color: #fff;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        .modal-content h2 {
-            margin-bottom: 20px;
-            color: #00d4ff;
+        .logout-btn {
+            padding: 10px 20px;
+            background: linear-gradient(145deg, #ff3366, #cc0033);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
+     Updated login screen with proper signup/login forms 
     <div id="loginScreen">
-        <h1>🎮 Piedra Papel o Tijera</h1>
-        <p style="color: #ccc; margin-bottom: 30px;">Batalla en Vivo con Videollamada</p>
-        <input type="email" id="emailInput" placeholder="Correo electrónico" class="login-btn" style="background: rgba(255,255,255,0.2);">
-        <input type="password" id="passwordInput" placeholder="Contraseña (mínimo 6 caracteres)" class="login-btn" style="background: rgba(255,255,255,0.2);">
-        <button onclick="loginWithEmail()" class="login-btn">Iniciar Sesión</button>
-        <button onclick="registerWithEmail()" class="login-btn" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
-            Crear Cuenta
-        </button>
-        <div style="margin: 20px 0; color: #999;">O</div>
-        <button onclick="loginWithGoogle()" class="login-btn" style="background: linear-gradient(135deg, #ea4335, #fbbc05);">
-            Iniciar con Google
-        </button>
+        <h1>🎮 Rock Paper Scissors</h1>
+        <p style="margin-bottom: 30px;">Live Battle Arena</p>
+
+        <div id="messageContainer"></div>
+
+         Login Form 
+        <div id="loginForm" class="auth-form">
+            <input type="email" id="loginEmail" class="form-input" placeholder="Email" autocomplete="email">
+            <input type="password" id="loginPassword" class="form-input" placeholder="Password" autocomplete="current-password">
+            <button class="login-btn" onclick="loginWithEmail()">🔐 Login</button>
+            
+            <div class="divider"><span>OR</span></div>
+            
+            <button class="login-btn" onclick="loginWithGoogle()">🔐 Login with Google</button>
+            
+            <div class="toggle-auth">
+                Don't have an account? <a onclick="showSignupForm()">Sign up</a>
+            </div>
+        </div>
+
+         Signup Form 
+        <div id="signupForm" class="auth-form hidden">
+            <input type="text" id="signupName" class="form-input" placeholder="Display Name" autocomplete="name">
+            <input type="email" id="signupEmail" class="form-input" placeholder="Email" autocomplete="email">
+            <input type="password" id="signupPassword" class="form-input" placeholder="Password (min 6 characters)" autocomplete="new-password">
+            <input type="password" id="signupConfirmPassword" class="form-input" placeholder="Confirm Password" autocomplete="new-password">
+            <button class="login-btn" onclick="signupWithEmail()">📝 Create Account</button>
+            
+            <div class="divider"><span>OR</span></div>
+            
+            <button class="login-btn" onclick="loginWithGoogle()">🔐 Sign up with Google</button>
+            
+            <div class="toggle-auth">
+                Already have an account? <a onclick="showLoginForm()">Login</a>
+            </div>
+        </div>
     </div>
 
-    <!-- Lobby Screen -->
-    <div id="lobbyScreen">
+     Lobby Screen 
+    <div id="lobbyScreen" class="hidden">
         <div class="user-info">
-            <h2 id="userName" style="color: #00d4ff;">¡Bienvenido!</h2>
-            <div class="wallet">💰 <span id="userBalance">100</span> monedas</div>
+            <h2 id="userName">Welcome!</h2>
+            <div class="wallet-balance">💰 <span id="walletBalance">0</span> coins</div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-        <h3 style="color: #fff; margin-bottom: 15px;">Jugadores en Línea</h3>
-        <div class="online-users" id="onlineUsers">
-            <div class="spinner"></div>
+
+        <div class="bet-container">
+            <h3>Set Your Bet Amount</h3>
+            <input type="number" id="betAmount" class="bet-input" min="5" value="10" placeholder="Min: 5 coins">
         </div>
-        <button onclick="logout()" class="action-btn secondary" style="width: 100%; margin-top: 20px;">Cerrar Sesión</button>
+
+        <!-- Invitation notification area -->
+        <div id="invitationContainer" class="hidden">
+            <h3>🎮 Game Invitation!</h3>
+            <p id="invitationText" style="margin: 15px 0; font-size: 1.1em;"></p>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                <button class="action-btn" onclick="acceptInvitation()">✅ Accept</button>
+                <button class="action-btn cancel" onclick="declineInvitation()">❌ Decline</button>
+            </div>
+        </div>
+
+        <div class="online-players">
+            <h3>🌐 Online Players</h3>
+            <div id="playersList"></div>
+        </div>
+
+        <div class="history-section">
+            <h3>📊 Recent Games</h3>
+            <div id="historyList"></div>
+        </div>
     </div>
 
-    <!-- Game Screen -->
+     Game Screen 
     <div id="gameScreen">
         <div class="game-machine">
-            <div class="tv-screen">
-                <div class="video-container" id="videoContainer">
-                    <div class="player-video">
-                        <video id="localVideo" autoplay muted playsinline></video>
-                        <div class="player-label" id="localPlayerLabel">You</div>
-                        <div class="player-balance" id="localPlayerBalance">💰 100</div>
+            <div class="game-screen">
+                <div class="video-container">
+                    <div class="video-wrapper">
+                        <video id="localVideo" class="player-video" autoplay muted playsinline></video>
+                        <div class="player-label" id="localPlayerName">You</div>
+                        <div class="player-balance" id="localPlayerBalance">0 💰</div>
                     </div>
-                    <div class="player-video">
-                        <video id="remoteVideo" playsinline></video>
-                        <div id="remoteMuteIcon" class="mute-icon">🔇</div>
-                        <div class="player-label" id="remotePlayerLabel">Opponent</div>
-                        <div class="player-balance" id="remotePlayerBalance">💰 100</div>
+                    <div class="video-wrapper">
+                        <video id="remoteVideo" class="player-video" autoplay playsinline></video>
+                        <div class="player-label" id="remotePlayerName">Opponent</div>
+                        <div class="player-balance" id="remotePlayerBalance">0 💰</div>
                     </div>
                 </div>
-                
-                <div class="game-status" id="gameStatus">Esperando jugadores...</div>
-                <div id="resultDisplay"></div>
+
+                <div class="game-status" id="gameStatus">
+                    Waiting for opponent...
+                </div>
             </div>
 
-            <div class="bet-container" id="betContainer">
-                <label style="color: #fff; font-size: 18px;">Cantidad de Apuesta: </label>
-                <input type="number" id="betAmount" class="bet-input" value="5" min="5">
-                <button onclick="confirmBet()" class="action-btn">Confirmar Apuesta</button>
-            </div>
-
-            <div class="controls" id="controls" style="display: none;">
-                <button class="choice-btn" onclick="makeChoice('rock')" id="rockBtn">
-                    <span>🪨</span>
+            <div class="controls" id="gameControls">
+                <button class="game-btn" id="rockBtn" onclick="makeChoice('rock')" disabled>
+                    <span class="btn-icon">🪨</span>
+                    Rock
                 </button>
-                <button class="choice-btn" onclick="makeChoice('paper')" id="paperBtn">
-                    <span>📄</span>
+                <button class="game-btn" id="paperBtn" onclick="makeChoice('paper')" disabled>
+                    <span class="btn-icon">📄</span>
+                    Paper
                 </button>
-                <button class="choice-btn" onclick="makeChoice('scissors')" id="scissorsBtn">
-                    <span>✂️</span>
+                <button class="game-btn" id="scissorsBtn" onclick="makeChoice('scissors')" disabled>
+                    <span class="btn-icon">✂️</span>
+                    Scissors
                 </button>
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <button onclick="exitGame()" class="action-btn secondary">Salir del Juego</button>
+                <button class="action-btn cancel" onclick="exitGame()">Exit Game</button>
             </div>
         </div>
     </div>
 
-    <!-- Challenge Modal -->
-    <div id="challengeModal" class="modal">
-        <div class="modal-content">
-            <h2>¡Desafío Recibido!</h2>
-            <p id="challengeText" style="margin: 20px 0;"></p>
-            <button onclick="acceptChallenge()" class="action-btn">Aceptar</button>
-            <button onclick="declineChallenge()" class="action-btn secondary">Rechazar</button>
-        </div>
-    </div>
-
-    <!-- Firebase SDK v8 (compatible con la sintaxis del script) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
+     Firebase SDK 
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <script>
         // ============================================
@@ -577,20 +658,24 @@
             appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
             measurementId: "G-C3VE5H0Y3S"
         };
-
+        // ============================================
         // Initialize Firebase
+        // ============================================
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
 
         // ============================================
-        // GLOBAL VARIABLES
+        // GLOBAL STATE
         // ============================================
         let currentUser = null;
         let currentGameId = null;
         let localStream = null;
         let peerConnection = null;
-        let pendingChallenge = null;
+        let gameListener = null;
+        let playersListener = null;
+        let invitationListener = null;
+        let pendingInvitation = null;
 
         // WebRTC Configuration
         const rtcConfig = {
@@ -600,441 +685,930 @@
             ]
         };
 
-        // ============================================
-        // SOUND EFFECTS
-        // ============================================
-        let audioCtx;
-        const sounds = {
-            click: () => playBeep(600, 0.05),
-            win: () => playMelody([523, 659, 784], 0.2),
-            lose: () => playMelody([392, 330, 262], 0.2),
-            draw: () => playBeep(440, 0.2)
-        };
-        function playBeep(frequency, duration) {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+        // Sound effects (using Web Audio API)
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(frequency = 800, duration = 200) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
             oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            gainNode.connect(audioContext.destination);
+            
             oscillator.frequency.value = frequency;
             oscillator.type = 'sine';
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + duration);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
         }
-        function playMelody(frequencies, duration) {
-            frequencies.forEach((freq, i) => {
-                setTimeout(() => playBeep(freq, duration), i * duration * 1000);
-            });
+
+        function playCountdownSound() {
+            playBeep(600, 150);
         }
-        
+
+        function playAlarmSound() {
+            playBeep(1200, 300);
+        }
+
+        function playWinSound() {
+            playBeep(800, 100);
+            setTimeout(() => playBeep(1000, 100), 100);
+            setTimeout(() => playBeep(1200, 200), 200);
+        }
+
+        function playLoseSound() {
+            playBeep(400, 100);
+            setTimeout(() => playBeep(300, 100), 100);
+            setTimeout(() => playBeep(200, 200), 200);
+        }
+
+        function playDrawSound() {
+            playBeep(600, 150);
+            setTimeout(() => playBeep(600, 150), 200);
+        }
+
+        function playClickSound() {
+            playBeep(1000, 50);
+        }
+
         // ============================================
-        // AUTHENTICATION & USER INIT
+        // AUTHENTICATION
         // ============================================
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
                 initializeUser();
+                showLobby();
             } else {
-                showScreen('loginScreen');
+                currentUser = null;
+                showLogin();
             }
         });
 
-        async function loginWithEmail() {
-            const email = document.getElementById('emailInput').value;
-            const password = document.getElementById('passwordInput').value;
-            if (!email || password.length < 6) return alert('Correo o contraseña inválidos.');
-            try { await auth.signInWithEmailAndPassword(email, password); } 
-            catch (error) { alert('Error: ' + error.message); }
+        function showLoginForm() {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('signupForm').classList.add('hidden');
+            clearMessage();
         }
 
-        async function registerWithEmail() {
-            const email = document.getElementById('emailInput').value;
-            const password = document.getElementById('passwordInput').value;
-            if (!email.includes('@') || password.length < 6) return alert('Correo o contraseña inválidos.');
-            try { await auth.createUserWithEmailAndPassword(email, password); } 
-            catch (error) { alert('Error: ' + error.message); }
+        function showSignupForm() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('signupForm').classList.remove('hidden');
+            clearMessage();
+        }
+
+        function showMessage(message, isError = false) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="${isError ? 'error-message' : 'success-message'}">${message}</div>`;
+        }
+
+        function clearMessage() {
+            document.getElementById('messageContainer').innerHTML = '';
+        }
+
+        async function loginWithEmail() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                showMessage('Please enter both email and password', true);
+                return;
+            }
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showMessage('Login successful!');
+            } catch (error) {
+                console.error('Login error:', error);
+                if (error.code === 'auth/user-not-found') {
+                    showMessage('No account found with this email. Please sign up first.', true);
+                } else if (error.code === 'auth/wrong-password') {
+                    showMessage('Incorrect password. Please try again.', true);
+                } else if (error.code === 'auth/invalid-email') {
+                    showMessage('Invalid email address.', true);
+                } else {
+                    showMessage('Login failed: ' + error.message, true);
+                }
+            }
+        }
+
+        async function signupWithEmail() {
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+            
+            // Validation
+            if (!name) {
+                showMessage('Please enter your display name', true);
+                return;
+            }
+
+            if (!email) {
+                showMessage('Please enter your email', true);
+                return;
+            }
+
+            if (!password) {
+                showMessage('Please enter a password', true);
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('Password must be at least 6 characters long', true);
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', true);
+                return;
+            }
+
+            try {
+                // Create user account
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                
+                // Update display name
+                await userCredential.user.updateProfile({
+                    displayName: name
+                });
+
+                showMessage('Account created successfully! Welcome!');
+                
+                // Clear form
+                document.getElementById('signupName').value = '';
+                document.getElementById('signupEmail').value = '';
+                document.getElementById('signupPassword').value = '';
+                document.getElementById('signupConfirmPassword').value = '';
+                
+            } catch (error) {
+                console.error('Signup error:', error);
+                if (error.code === 'auth/email-already-in-use') {
+                    showMessage('This email is already registered. Please login instead.', true);
+                } else if (error.code === 'auth/invalid-email') {
+                    showMessage('Invalid email address.', true);
+                } else if (error.code === 'auth/weak-password') {
+                    showMessage('Password is too weak. Please use a stronger password.', true);
+                } else {
+                    showMessage('Signup failed: ' + error.message, true);
+                }
+            }
         }
 
         async function loginWithGoogle() {
-            try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); } 
-            catch (error) { alert('Error: ' + error.message); }
-        }
-
-        function logout() {
-            if (currentUser) {
-                database.ref(`users/${currentUser.uid}/status`).set('offline');
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                console.error('Google login error:', error);
+                showMessage('Google login failed: ' + error.message, true);
             }
-            auth.signOut();
         }
 
+        // ============================================
+        // USER INITIALIZATION
+        // ============================================
         async function initializeUser() {
             const userRef = database.ref(`users/${currentUser.uid}`);
+            
+            // Check if user exists
             const snapshot = await userRef.once('value');
-            const userData = snapshot.val() || {};
-
-            await userRef.set({
-                email: currentUser.email,
-                status: 'online',
-                wallet: userData.wallet !== undefined ? userData.wallet : 100,
-                uid: currentUser.uid
-            });
-            userRef.onDisconnect().update({ status: 'offline' });
-            
-            userRef.child('wallet').on('value', snap => {
-                const balance = snap.val() || 0;
-                document.getElementById('userBalance').textContent = balance;
-                if(document.getElementById('gameScreen').style.display !== 'none') {
-                    document.getElementById('localPlayerBalance').textContent = '💰 ' + balance;
-                }
-            });
-
-            userRef.child('challenge').on('value', snap => {
-                const challenge = snap.val();
-                if (challenge && challenge.from !== currentUser.uid) {
-                    pendingChallenge = challenge;
-                    showChallengeModal(challenge);
-                }
-            });
-
-            document.getElementById('userName').textContent = `Bienvenido, ${currentUser.email.split('@')[0]}`;
-            showScreen('lobbyScreen');
-            loadOnlineUsers();
-        }
-
-        // ============================================
-        // LOBBY & CHALLENGE
-        // ============================================
-        function loadOnlineUsers() {
-            const usersRef = database.ref('users');
-            usersRef.orderByChild('status').equalTo('online').on('value', snapshot => {
-                const container = document.getElementById('onlineUsers');
-                container.innerHTML = '';
-                let onlineCount = 0;
-                snapshot.forEach(childSnapshot => {
-                    if (childSnapshot.key === currentUser.uid) return;
-                    onlineCount++;
-                    const user = childSnapshot.val();
-                    const userName = user.email.split('@')[0];
-                    container.innerHTML += `
-                        <div class="user-item">
-                            <div>
-                                <b>${userName}</b>
-                                <div style="font-size: 12px; color: #fbbf24;">💰 ${user.wallet || 0}</div>
-                            </div>
-                            <button class="challenge-btn" onclick="challengeUser('${childSnapshot.key}', '${userName}')">Desafiar</button>
-                        </div>`;
+            if (!snapshot.exists()) {
+                // New user - initialize wallet
+                await userRef.set({
+                    email: currentUser.email,
+                    displayName: currentUser.displayName || currentUser.email.split('@')[0],
+                    wallet: 100, // Starting balance
+                    status: 'online',
+                    createdAt: Date.now()
                 });
-                if (onlineCount === 0) container.innerHTML = `<p style="text-align:center; color:#ccc;">No hay otros jugadores en línea.</p>`;
+            } else {
+                // Update status
+                await userRef.update({ status: 'online' });
+            }
+
+            // Listen to wallet changes
+            userRef.child('wallet').on('value', snapshot => {
+                const balance = snapshot.val() || 0;
+                document.getElementById('walletBalance').textContent = balance;
             });
+
+            // Load transaction history
+            loadHistory();
+
+            // Listen to online players
+            listenToPlayers();
+
+            listenToInvitations();
+
+            // Handle disconnect
+            userRef.child('status').onDisconnect().set('offline');
         }
 
-        async function challengeUser(opponentId, opponentName) {
-            sounds.click();
-            const gameRef = database.ref('games').push();
-            currentGameId = gameRef.key;
-            await gameRef.set({
-                player1: { uid: currentUser.uid, email: currentUser.email },
-                player2: { uid: opponentId }, status: 'pending'
-            });
-            await database.ref(`users/${opponentId}/challenge`).set({
-                from: currentUser.uid, gameId: currentGameId, fromEmail: currentUser.email
-            });
-            showScreen('gameScreen');
-            document.getElementById('gameStatus').textContent = `Esperando a ${opponentName}...`;
+        // ============================================
+        // LOBBY FUNCTIONS
+        // ============================================
+        function listenToPlayers() {
+            if (playersListener) playersListener.off();
             
-            gameRef.on('value', gameListener);
+            playersListener = database.ref('users');
+            playersListener.on('value', snapshot => {
+                const players = snapshot.val();
+                const playersList = document.getElementById('playersList');
+                playersList.innerHTML = '';
+
+                if (!players) return;
+
+                Object.keys(players).forEach(uid => {
+                    if (uid === currentUser.uid) return; // Skip self
+                    
+                    const player = players[uid];
+                    if (player.status === 'online') {
+                        const div = document.createElement('div');
+                        div.className = 'player-item';
+                        div.innerHTML = `
+                            <span>${player.displayName || player.email}</span>
+                            <button class="challenge-btn" onclick="challengePlayer('${uid}', '${player.displayName || player.email}')">
+                                ⚔️ Challenge
+                            </button>
+                        `;
+                        playersList.appendChild(div);
+                    }
+                });
+
+                if (playersList.children.length === 0) {
+                    playersList.innerHTML = '<p style="text-align: center; opacity: 0.6;">No players online</p>';
+                }
+            });
         }
 
-        const gameListener = snapshot => {
-            const game = snapshot.val();
-            if (!game) {
-                database.ref(`games/${currentGameId}`).off('value', gameListener);
-                alert('El desafío fue cancelado.');
-                exitGame();
+        function listenToInvitations() {
+            if (invitationListener) invitationListener.off();
+            
+            invitationListener = database.ref(`invitations/${currentUser.uid}`);
+            invitationListener.on('child_added', async snapshot => {
+                const invitation = snapshot.val();
+                if (invitation && invitation.status === 'pending') {
+                    pendingInvitation = {
+                        id: snapshot.key,
+                        ...invitation
+                    };
+                    
+                    // Show invitation UI
+                    document.getElementById('invitationText').textContent = 
+                        `${invitation.fromName} challenges you to a ${invitation.betAmount} coins battle!`;
+                    document.getElementById('invitationContainer').classList.remove('hidden');
+                    
+                    // Play notification sound
+                    playAlarmSound();
+                }
+            });
+
+            // Listen for invitation updates (accepted/declined)
+            invitationListener.on('child_changed', async snapshot => {
+                const invitation = snapshot.val();
+                if (invitation.status === 'accepted' && invitation.from === currentUser.uid) {
+                    // Our invitation was accepted, start the game
+                    currentGameId = invitation.gameId;
+                    showGame();
+                    setupGame();
+                } else if (invitation.status === 'declined' && invitation.from === currentUser.uid) {
+                    alert('Your invitation was declined.');
+                }
+            });
+        }
+
+        async function acceptInvitation() {
+            if (!pendingInvitation) return;
+
+            // Check if user has enough coins
+            const walletSnapshot = await database.ref(`users/${currentUser.uid}/wallet`).once('value');
+            const currentBalance = walletSnapshot.val() || 0;
+
+            if (currentBalance < pendingInvitation.betAmount) {
+                alert('Insufficient balance!');
+                await declineInvitation();
                 return;
             }
-            if (game.status === 'accepted') {
-                database.ref(`games/${currentGameId}`).off('value', gameListener);
-                startGame(game);
-            } else if (game.status === 'declined') {
-                database.ref(`games/${currentGameId}`).off('value', gameListener);
-                alert('Desafío rechazado.');
-                exitGame();
-            }
-        };
 
-        function showChallengeModal(challenge) {
-            document.getElementById('challengeText').textContent = `${challenge.fromEmail.split('@')[0]} te está desafiando.`;
-            document.getElementById('challengeModal').style.display = 'flex';
-        }
+            await database.ref(`invitations/${currentUser.uid}/${pendingInvitation.id}`).update({
+                status: 'accepted'
+            });
 
-        async function acceptChallenge() {
-            document.getElementById('challengeModal').style.display = 'none';
-            if (!pendingChallenge) return;
-            currentGameId = pendingChallenge.gameId;
-            await database.ref(`games/${currentGameId}`).update({ status: 'accepted', 'player2/email': currentUser.email });
-            await database.ref(`users/${currentUser.uid}/challenge`).remove();
-            showScreen('gameScreen');
-        }
+            await database.ref(`invitations/${pendingInvitation.from}/${pendingInvitation.id}`).update({
+                status: 'accepted'
+            });
 
-        async function declineChallenge() {
-            document.getElementById('challengeModal').style.display = 'none';
-            if (!pendingChallenge) return;
-            await database.ref(`games/${pendingChallenge.gameId}`).update({ status: 'declined' });
-            await database.ref(`users/${currentUser.uid}/challenge`).remove();
-            pendingChallenge = null;
-        }
+            await database.ref(`users/${currentUser.uid}`).update({ 
+                status: 'in-game',
+                currentGame: pendingInvitation.gameId
+            });
 
-        // ============================================
-        // GAME LOGIC
-        // ============================================
-        async function startGame(game) {
-            document.getElementById('resultDisplay').innerHTML = '';
-            document.getElementById('betContainer').style.display = 'block';
-            document.getElementById('controls').style.display = 'none';
+            // Hide invitation UI
+            document.getElementById('invitationContainer').classList.add('hidden');
+
+            // Start the game
+            currentGameId = pendingInvitation.gameId;
+            pendingInvitation = null;
             
-            const opponent = game.player1.uid === currentUser.uid ? game.player2 : game.player1;
-            const opponentData = (await database.ref(`users/${opponent.uid}`).once('value')).val();
-            document.getElementById('remotePlayerLabel').textContent = opponentData.email.split('@')[0];
-            document.getElementById('remotePlayerBalance').textContent = '💰 ' + (opponentData.wallet || 0);
-            
-            await setupWebRTC();
-            document.getElementById('gameStatus').textContent = '¡Confirma tu apuesta!';
+            showGame();
+            setupGame();
         }
 
-        async function confirmBet() {
+        async function declineInvitation() {
+            if (!pendingInvitation) return;
+
+            // Update invitation status
+            await database.ref(`invitations/${currentUser.uid}/${pendingInvitation.id}`).update({
+                status: 'declined'
+            });
+
+            // Also update the sender's invitation
+            await database.ref(`invitations/${pendingInvitation.from}/${pendingInvitation.id}`).update({
+                status: 'declined'
+            });
+
+            // Delete the game
+            await database.ref(`games/${pendingInvitation.gameId}`).remove();
+
+            // Hide invitation UI
+            document.getElementById('invitationContainer').classList.add('hidden');
+            pendingInvitation = null;
+        }
+
+        async function challengePlayer(opponentId, opponentName) {
             const betAmount = parseInt(document.getElementById('betAmount').value);
-            const balance = parseInt(document.getElementById('userBalance').textContent);
-
-            if (betAmount < 5 || balance < betAmount) {
-                return alert('Apuesta inválida o saldo insuficiente.');
-            }
-            sounds.click();
-
-            const gameRef = database.ref(`games/${currentGameId}`);
-            const game = (await gameRef.once('value')).val();
-            const playerKey = game.player1.uid === currentUser.uid ? 'player1' : 'player2';
             
-            await gameRef.child(playerKey).update({ bet: betAmount, ready: true });
-            document.getElementById('betContainer').style.display = 'none';
-            document.getElementById('gameStatus').textContent = 'Esperando al oponente...';
+            if (betAmount < 5) {
+                alert('Minimum bet is 5 coins!');
+                return;
+            }
 
-            gameRef.on('value', checkBothReadyListener);
+            // Check if user has enough coins
+            const walletSnapshot = await database.ref(`users/${currentUser.uid}/wallet`).once('value');
+            const currentBalance = walletSnapshot.val() || 0;
+
+            if (currentBalance < betAmount) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            const gameRef = database.ref('games').push();
+            currentGameId = gameRef.key;
+
+            await gameRef.set({
+                player1: currentUser.uid,
+                player2: opponentId,
+                player1Name: currentUser.displayName || currentUser.email.split('@')[0],
+                player2Name: opponentName,
+                betAmount: betAmount,
+                status: 'waiting',
+                createdAt: Date.now()
+            });
+
+            const invitationRef = database.ref(`invitations/${opponentId}`).push();
+            const invitationId = invitationRef.key;
+
+            await invitationRef.set({
+                from: currentUser.uid,
+                fromName: currentUser.displayName || currentUser.email.split('@')[0],
+                to: opponentId,
+                toName: opponentName,
+                betAmount: betAmount,
+                gameId: currentGameId,
+                status: 'pending',
+                createdAt: Date.now()
+            });
+
+            await database.ref(`invitations/${currentUser.uid}/${invitationId}`).set({
+                from: currentUser.uid,
+                fromName: currentUser.displayName || currentUser.email.split('@')[0],
+                to: opponentId,
+                toName: opponentName,
+                betAmount: betAmount,
+                gameId: currentGameId,
+                status: 'pending',
+                createdAt: Date.now()
+            });
+
+            await database.ref(`users/${currentUser.uid}`).update({ 
+                status: 'waiting',
+                currentGame: currentGameId
+            });
+
+            alert(`Invitation sent to ${opponentName}! Waiting for response...`);
+            
+            const senderInvitationRef = database.ref(`invitations/${currentUser.uid}/${invitationId}`);
+            senderInvitationRef.on('value', async snapshot => {
+                const invitation = snapshot.val();
+                if (invitation && invitation.status === 'accepted') {
+                    // Opponent accepted, start the game
+                    senderInvitationRef.off(); // Stop listening
+                    await database.ref(`users/${currentUser.uid}`).update({ 
+                        status: 'in-game'
+                    });
+                    showGame();
+                    setupGame();
+                } else if (invitation && invitation.status === 'declined') {
+                    // Opponent declined
+                    senderInvitationRef.off(); // Stop listening
+                    await database.ref(`users/${currentUser.uid}`).update({ 
+                        status: 'online',
+                        currentGame: null
+                    });
+                    await database.ref(`games/${currentGameId}`).remove();
+                    currentGameId = null;
+                    alert('Your invitation was declined.');
+                }
+            });
         }
 
-        const checkBothReadyListener = snapshot => {
-            const game = snapshot.val();
-            if (game && game.player1.ready && game.player2.ready) {
-                database.ref(`games/${currentGameId}`).off('value', checkBothReadyListener);
-                startCountdown();
-            }
-        };
+        async function loadHistory() {
+            const historyRef = database.ref(`history/${currentUser.uid}`).limitToLast(5);
+            historyRef.on('value', snapshot => {
+                const history = snapshot.val();
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = '';
 
-        async function startCountdown() {
-            document.getElementById('gameStatus').innerHTML = `<div class="countdown">3</div>`;
-            await sleep(1000);
-            document.getElementById('gameStatus').innerHTML = `<div class="countdown">2</div>`;
-            await sleep(1000);
-            document.getElementById('gameStatus').innerHTML = `<div class="countdown">1</div>`;
-            await sleep(1000);
-            
-            document.getElementById('gameStatus').textContent = '¡ELIGE!';
-            document.getElementById('controls').style.display = 'flex';
-            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
+                if (!history) {
+                    historyList.innerHTML = '<p style="text-align: center; opacity: 0.6;">No games yet</p>';
+                    return;
+                }
 
-            await database.ref(`games/${currentGameId}`).update({ 'player1/choice': null, 'player2/choice': null, status: 'playing' });
-            database.ref(`games/${currentGameId}`).on('value', checkBothChoicesListener);
+                Object.values(history).reverse().forEach(game => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    const resultColor = game.result === 'win' ? '#00ff88' : game.result === 'lose' ? '#ff3366' : '#ffd700';
+                    div.innerHTML = `
+                        <span style="color: ${resultColor}; font-weight: bold;">${game.result.toUpperCase()}</span>
+                        vs ${game.opponent} | ${game.amount > 0 ? '+' : ''}${game.amount} coins
+                    `;
+                    historyList.appendChild(div);
+                });
+            });
         }
 
-        const checkBothChoicesListener = async snapshot => {
-            const game = snapshot.val();
-            if (game && game.player1.choice && game.player2.choice) {
-                database.ref(`games/${currentGameId}`).off('value', checkBothChoicesListener);
-                await determineWinner(game);
+        // ============================================
+        // GAME FUNCTIONS
+        // ============================================
+        function updateGameUI(game) {
+            if (!game) return;
+
+            // Update player names
+            if (game.player1Name) {
+                document.getElementById('localPlayerName').textContent = game.player1Name;
             }
-        };
+            if (game.player2Name) {
+                document.getElementById('remotePlayerName').textContent = game.player2Name;
+            }
 
-        async function makeChoice(choice) {
-            sounds.click();
-            document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
-            document.getElementById(`${choice}Btn`).classList.add('selected');
-            
-            const playerKey = (await database.ref(`games/${currentGameId}/player1/uid`).once('value')).val() === currentUser.uid ? 'player1' : 'player2';
-            await database.ref(`games/${currentGameId}/${playerKey}`).update({ choice: choice });
-
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('gameStatus').textContent = 'Esperando al oponente...';
+            // Update bet display in game status if in waiting state
+            if (game.status === 'waiting') {
+                document.getElementById('gameStatus').textContent = `Bet: ${game.betAmount} coins - Waiting for opponent...`;
+            }
         }
 
-        async function determineWinner(game) {
-            const { player1, player2 } = game;
-            const choice1 = player1.choice;
-            const choice2 = player2.choice;
-            let winnerId = null;
+        async function setupGame() {
+            document.getElementById('gameStatus').innerHTML = 'Setting up video...';
 
-            if (choice1 !== choice2) {
-                if ((choice1 === 'rock' && choice2 === 'scissors') || (choice1 === 'scissors' && choice2 === 'paper') || (choice1 === 'paper' && choice2 === 'rock')) {
-                    winnerId = player1.uid;
-                } else {
-                    winnerId = player2.uid;
+            try {
+                // Try to get both video and audio
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
+                });
+                document.getElementById('localVideo').srcObject = localStream;
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+                
+                // Try video only
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: false 
+                    });
+                    document.getElementById('localVideo').srcObject = localStream;
+                    document.getElementById('gameStatus').innerHTML = 'Video only (no microphone detected)';
+                } catch (videoError) {
+                    // Try audio only
+                    try {
+                        localStream = await navigator.mediaDevices.getUserMedia({ 
+                            video: false, 
+                            audio: true 
+                        });
+                        document.getElementById('gameStatus').innerHTML = 'Audio only (no camera detected)';
+                    } catch (audioError) {
+                        // No media devices available - continue without them
+                        console.warn('No media devices available, continuing without video/audio');
+                        document.getElementById('gameStatus').innerHTML = 'Playing without video/audio';
+                        
+                        // Hide video containers
+                        document.querySelector('.video-container').style.display = 'none';
+                        
+                        // Show a message
+                        const message = document.createElement('div');
+                        message.style.cssText = 'text-align: center; padding: 20px; background: rgba(255, 153, 0, 0.2); border-radius: 10px; margin: 20px 0;';
+                        message.innerHTML = `
+                            <p style="color: #ff9900; font-weight: bold;">⚠️ Camera/Microphone not available</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">
+                                Playing without video. Make sure to allow camera/microphone permissions for the full experience!
+                            </p>
+                        `;
+                        document.querySelector('.game-screen').insertBefore(message, document.getElementById('gameStatus'));
+                    }
                 }
             }
 
-            // MEJORA 1: Lógica de monedas corregida y centralizada
-            if (winnerId) {
-                const loserId = winnerId === player1.uid ? player2.uid : player1.uid;
-                const betAmount = winnerId === player1.uid ? player2.bet : player1.bet;
-                await updateWallets(winnerId, loserId, betAmount);
+            // Listen to game state
+            if (gameListener) gameListener.off();
+            gameListener = database.ref(`games/${currentGameId}`);
+            
+            gameListener.on('value', async snapshot => {
+                const game = snapshot.val();
+                if (!game) return;
+
+                updateGameUI(game);
+
+                // Handle game status changes
+                if (game.status === 'countdown') {
+                    startCountdown();
+                } else if (game.status === 'playing') {
+                    enableButtons();
+                } else if (game.status === 'finished') {
+                    showResult(game);
+                }
+            });
+
+            // Setup WebRTC only if we have a stream
+            if (localStream) {
+                setupWebRTC();
             }
 
-            const resultType = !winnerId ? 'draw' : (winnerId === currentUser.uid ? 'win' : 'lose');
-            const resultText = {
-                draw: '🤝 ¡Empate!',
-                win: `🎉 ¡Ganaste! +${winnerId === player1.uid ? player2.bet : player1.bet} monedas`,
-                lose: `💔 ¡Perdiste! -${winnerId === player1.uid ? player1.bet : player2.bet} monedas`
-            }[resultType];
+            // Update player info
+            const gameSnapshot = await database.ref(`games/${currentGameId}`).once('value');
+            const game = gameSnapshot.val();
             
-            sounds[resultType]();
-            showResult(resultType, resultText);
+            const isPlayer1 = game.player1 === currentUser.uid;
             
-            setTimeout(() => {
-                document.getElementById('resultDisplay').innerHTML += `
-                    <div style="margin-top:20px;">
-                        <button onclick="playAgain()" class="action-btn">Revancha</button>
-                        <button onclick="exitGame()" class="action-btn secondary">Salir</button>
-                    </div>`;
-            }, 1500);
-        }
-        
-        async function updateWallets(winnerId, loserId, betAmount) {
-            const winnerRef = database.ref(`users/${winnerId}/wallet`);
-            const loserRef = database.ref(`users/${loserId}/wallet`);
-            await winnerRef.transaction(balance => (balance || 0) + betAmount);
-            await loserRef.transaction(balance => (balance || 0) - betAmount);
-        }
+            if (isPlayer1) {
+                document.getElementById('localPlayerName').textContent = game.player1Name;
+                document.getElementById('remotePlayerName').textContent = game.player2Name;
+            } else {
+                document.getElementById('localPlayerName').textContent = game.player2Name;
+                document.getElementById('remotePlayerName').textContent = game.player1Name;
+            }
 
-        function showResult(type, message) {
-            const resultDiv = document.getElementById('resultDisplay');
-            resultDiv.className = `result-display ${type}`;
-            resultDiv.textContent = message;
-        }
-
-        async function playAgain() {
-            sounds.click();
-            // MEJORA 2: Lógica de revancha corregida
-            const gameRef = database.ref(`games/${currentGameId}`);
-            const playerKey = (await gameRef.child('player1/uid').once('value')).val() === currentUser.uid ? 'player1' : 'player2';
+            // Load balances
+            const p1Balance = await database.ref(`users/${game.player1}/wallet`).once('value');
+            const p2Balance = await database.ref(`users/${game.player2}/wallet`).once('value');
             
-            // Indicar que estoy listo para la revancha
-            await gameRef.child(`${playerKey}/rematch`).set(true);
+            if (isPlayer1) {
+                document.getElementById('localPlayerBalance').textContent = `${p1Balance.val()} 💰`;
+                document.getElementById('remotePlayerBalance').textContent = `${p2Balance.val()} 💰`;
+            } else {
+                document.getElementById('localPlayerBalance').textContent = `${p2Balance.val()} 💰`;
+                document.getElementById('remotePlayerBalance').textContent = `${p1Balance.val()} 💰`;
+            }
 
-            document.getElementById('resultDisplay').innerHTML = `<h2>Esperando al oponente para la revancha...</h2>`;
-
-            // Escuchar si ambos están listos para la revancha
-            gameRef.on('value', rematchListener);
+            if (isPlayer1 && game.status === 'waiting') {
+                setTimeout(async () => {
+                    await database.ref(`games/${currentGameId}`).update({ status: 'countdown' });
+                }, 3000);
+            }
         }
-        
-        const rematchListener = async (snapshot) => {
-            const game = snapshot.val();
-            if (game && game.player1.rematch && game.player2.rematch) {
-                database.ref(`games/${currentGameId}`).off('value', rematchListener);
-                // Ambos listos, reiniciar el juego
+
+        async function startCountdown() {
+            document.getElementById('gameStatus').innerHTML = '<div class="countdown">3</div>';
+            playCountdownSound();
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            document.getElementById('gameStatus').innerHTML = '<div class="countdown">2</div>';
+            playCountdownSound();
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            document.getElementById('gameStatus').innerHTML = '<div class="countdown">1</div>';
+            playAlarmSound();
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            document.getElementById('gameStatus').innerHTML = '<div class="countdown">GO!</div>';
+            playAlarmSound();
+            
+            await database.ref(`games/${currentGameId}`).update({ status: 'playing' });
+        }
+
+        function enableButtons() {
+            document.getElementById('rockBtn').disabled = false;
+            document.getElementById('paperBtn').disabled = false;
+            document.getElementById('scissorsBtn').disabled = false;
+            document.getElementById('gameStatus').textContent = 'Make your choice!';
+        }
+
+        async function makeChoice(choice) {
+            playClickSound();
+            
+            // Disable all buttons
+            document.getElementById('rockBtn').disabled = true;
+            document.getElementById('paperBtn').disabled = true;
+            document.getElementById('scissorsBtn').disabled = true;
+
+            // Highlight selected button
+            document.getElementById(`${choice}Btn`).classList.add('selected');
+
+            const gameSnapshot = await database.ref(`games/${currentGameId}`).once('value');
+            const game = gameSnapshot.val();
+            const isPlayer1 = game.player1 === currentUser.uid;
+
+            // Update choice
+            const updates = {};
+            if (isPlayer1) {
+                updates.player1Choice = choice;
+            } else {
+                updates.player2Choice = choice;
+            }
+
+            await database.ref(`games/${currentGameId}`).update(updates);
+
+            document.getElementById('gameStatus').textContent = 'Waiting for opponent...';
+
+            // Check if both players made their choice
+            const updatedSnapshot = await database.ref(`games/${currentGameId}`).once('value');
+            const updatedGame = updatedSnapshot.val();
+
+            if (updatedGame.player1Choice && updatedGame.player2Choice) {
+                // Determine winner
+                const result = determineWinner(updatedGame.player1Choice, updatedGame.player2Choice);
+                
                 await database.ref(`games/${currentGameId}`).update({
-                    status: 'accepted',
-                    'player1/bet': null, 'player1/ready': null, 'player1/choice': null, 'player1/rematch': null,
-                    'player2/bet': null, 'player2/ready': null, 'player2/choice': null, 'player2/rematch': null
+                    status: 'finished',
+                    result: result,
+                    finishedAt: Date.now()
                 });
-                startGame(game); // Re-iniciar el flujo del juego
-            }
-        };
 
-        function exitGame() {
-            sounds.click();
-            if (currentGameId) {
-                database.ref(`games/${currentGameId}`).off();
-                database.ref(`games/${currentGameId}`).remove();
+                // Update wallets
+                await updateWallets(updatedGame, result);
             }
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
-            if (peerConnection) peerConnection.close();
-            localStream = peerConnection = currentGameId = null;
-            document.getElementById('localVideo').srcObject = null;
-            document.getElementById('remoteVideo').srcObject = null;
-            showScreen('lobbyScreen');
+        }
+
+        function determineWinner(choice1, choice2) {
+            if (choice1 === choice2) return 'draw';
+            
+            if (
+                (choice1 === 'rock' && choice2 === 'scissors') ||
+                (choice1 === 'scissors' && choice2 === 'paper') ||
+                (choice1 === 'paper' && choice2 === 'rock')
+            ) {
+                return 'player1';
+            }
+            
+            return 'player2';
+        }
+
+        async function updateWallets(game, result) {
+            const betAmount = game.betAmount;
+
+            if (result === 'draw') {
+                // Refund both players
+                await addToHistory(game.player1, game.player2Name, 'draw', 0);
+                await addToHistory(game.player2, game.player1Name, 'draw', 0);
+            } else {
+                const winner = result === 'player1' ? game.player1 : game.player2;
+                const loser = result === 'player1' ? game.player2 : game.player1;
+                const winnerName = result === 'player1' ? game.player1Name : game.player2Name;
+                const loserName = result === 'player1' ? game.player2Name : game.player1Name;
+
+                // Update winner wallet
+                const winnerWalletRef = database.ref(`users/${winner}/wallet`);
+                const winnerSnapshot = await winnerWalletRef.once('value');
+                await winnerWalletRef.set((winnerSnapshot.val() || 0) + (betAmount * 2));
+
+                // Update loser wallet
+                const loserWalletRef = database.ref(`users/${loser}/wallet`);
+                const loserSnapshot = await loserWalletRef.once('value');
+                await loserWalletRef.set((loserSnapshot.val() || 0) - betAmount);
+
+                // Add to history
+                await addToHistory(winner, loserName, 'win', betAmount * 2);
+                await addToHistory(loser, winnerName, 'lose', -betAmount);
+            }
+        }
+
+        async function addToHistory(userId, opponent, result, amount) {
+            await database.ref(`history/${userId}`).push({
+                opponent: opponent,
+                result: result,
+                amount: amount,
+                timestamp: Date.now()
+            });
+        }
+
+        function showResult(game) {
+            const isPlayer1 = game.player1 === currentUser.uid;
+            let resultText = '';
+            let resultClass = '';
+
+            if (game.result === 'draw') {
+                resultText = '🤝 DRAW!';
+                resultClass = 'draw';
+                playDrawSound();
+            } else if (
+                (game.result === 'player1' && isPlayer1) ||
+                (game.result === 'player2' && !isPlayer1)
+            ) {
+                resultText = `🎉 YOU WIN! +${game.betAmount * 2} coins`;
+                resultClass = 'win';
+                playWinSound();
+            } else {
+                resultText = `😢 YOU LOSE! -${game.betAmount} coins`;
+                resultClass = 'lose';
+                playLoseSound();
+            }
+
+            const p1Icon = getChoiceIcon(game.player1Choice);
+            const p2Icon = getChoiceIcon(game.player2Choice);
+
+            document.getElementById('gameStatus').innerHTML = `
+                <div class="result-display ${resultClass}">
+                    ${resultText}
+                    <div style="font-size: 0.5em; margin-top: 20px;">
+                        ${game.player1Name}: ${p1Icon} vs ${game.player2Name}: ${p2Icon}
+                    </div>
+                </div>
+            `;
+
+            // Show play again button after 3 seconds
+            setTimeout(() => {
+                document.getElementById('gameStatus').innerHTML += `
+                    <button class="action-btn" onclick="exitGame()">Back to Lobby</button>
+                `;
+            }, 3000);
+        }
+
+        function getChoiceIcon(choice) {
+            const icons = { rock: '🪨', paper: '📄', scissors: '✂️' };
+            return icons[choice] || '❓';
+        }
+
+        async function exitGame() {
+            // Clean up
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            if (gameListener) {
+                gameListener.off();
+                gameListener = null;
+            }
+
+            if (currentUser) {
+                await database.ref(`users/${currentUser.uid}`).update({
+                    status: 'online',
+                    currentGame: null
+                });
+            }
+
+            // Reset UI
+            document.getElementById('rockBtn').classList.remove('selected');
+            document.getElementById('paperBtn').classList.remove('selected');
+            document.getElementById('scissorsBtn').classList.remove('selected');
+
+            currentGameId = null;
+            showLobby();
+        }
+
+        async function logout() {
+            if (currentUser) {
+                await database.ref(`users/${currentUser.uid}`).update({
+                    status: 'offline',
+                    currentGame: null
+                });
+            }
+            
+            // Clean up listeners
+            if (playersListener) playersListener.off();
+            if (invitationListener) invitationListener.off();
+            if (gameListener) gameListener.off();
+            
+            await auth.signOut();
         }
 
         // ============================================
         // WEBRTC SETUP
         // ============================================
         async function setupWebRTC() {
-            try {
-                const constraints = { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: { echoCancellation: true, noiseSuppression: true } };
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                document.getElementById('localVideo').srcObject = localStream;
-                
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            if (!localStream) {
+                console.log('No local stream available, skipping WebRTC setup');
+                return;
+            }
 
-                peerConnection.ontrack = event => {
-                    const remoteVideo = document.getElementById('remoteVideo');
-                    const remoteMuteIcon = document.getElementById('remoteMuteIcon');
-                    remoteVideo.srcObject = event.streams[0];
-                    remoteVideo.play().catch(() => {
-                        remoteVideo.muted = true;
-                        remoteMuteIcon.style.display = 'block';
-                        remoteVideo.play();
-                        remoteVideo.addEventListener('click', () => {
-                            remoteVideo.muted = false;
-                            remoteMuteIcon.style.display = 'none';
-                        }, { once: true });
-                    });
-                };
-                
-                const gameRef = database.ref(`games/${currentGameId}`);
-                const game = (await gameRef.once('value')).val();
-                const isPlayer1 = game.player1.uid === currentUser.uid;
-                const selfKey = isPlayer1 ? 'player1' : 'player2';
-                const opponentKey = isPlayer1 ? 'player2' : 'player1';
+            peerConnection = new RTCPeerConnection(rtcConfig);
 
-                peerConnection.onicecandidate = e => {
-                    if (e.candidate) gameRef.child(`${selfKey}/ice`).push(e.candidate.toJSON());
-                };
-                gameRef.child(`${opponentKey}/ice`).on('child_added', s => peerConnection.addIceCandidate(new RTCIceCandidate(s.val())));
+            // Add local stream
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
 
-                if (isPlayer1) {
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    await gameRef.update({ offer: { sdp: offer.sdp, type: offer.type }});
-                    gameRef.child('answer').on('value', s => {
-                        if (s.exists() && !peerConnection.currentRemoteDescription) peerConnection.setRemoteDescription(new RTCSessionDescription(s.val()));
-                    });
-                } else {
-                    gameRef.child('offer').on('value', async s => {
-                        if (s.exists() && !peerConnection.currentRemoteDescription) {
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(s.val()));
-                            const answer = await peerConnection.createAnswer();
-                            await peerConnection.setLocalDescription(answer);
-                            await gameRef.update({ answer: { sdp: answer.sdp, type: answer.type }});
-                        }
+            // Handle remote stream
+            peerConnection.ontrack = event => {
+                document.getElementById('remoteVideo').srcObject = event.streams[0];
+            };
+
+            // Handle ICE candidates
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    const gameSnapshot = database.ref(`games/${currentGameId}`);
+                    const isPlayer1 = currentUser.uid === gameSnapshot.player1;
+                    
+                    database.ref(`games/${currentGameId}/ice/${isPlayer1 ? 'player1' : 'player2'}`).push({
+                        candidate: event.candidate.toJSON()
                     });
                 }
-            } catch (error) {
-                alert('Error de Cámara/Micrófono: ' + error.message);
-                exitGame();
+            };
+
+            // Determine if we should create offer
+            const gameSnapshot = await database.ref(`games/${currentGameId}`).once('value');
+            const game = gameSnapshot.val();
+            const isPlayer1 = game.player1 === currentUser.uid;
+
+            if (isPlayer1) {
+                // Player 1 creates offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                await database.ref(`games/${currentGameId}/offer`).set({
+                    sdp: offer.sdp,
+                    type: offer.type
+                });
+            } else {
+                // Player 2 waits for offer and creates answer
+                database.ref(`games/${currentGameId}/offer`).on('value', async snapshot => {
+                    const offer = snapshot.val();
+                    if (offer && !peerConnection.currentRemoteDescription) {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                        
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        
+                        await database.ref(`games/${currentGameId}/answer`).set({
+                            sdp: answer.sdp,
+                            type: answer.type
+                        });
+                    }
+                });
+            }
+
+            // Listen for answer (Player 1)
+            if (isPlayer1) {
+                database.ref(`games/${currentGameId}/answer`).on('value', async snapshot => {
+                    const answer = snapshot.val();
+                    if (answer && !peerConnection.currentRemoteDescription) {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    }
+                });
+            }
+
+            // Listen for ICE candidates
+            database.ref(`games/${currentGameId}/ice/${isPlayer1 ? 'player2' : 'player1'}`).on('child_added', async snapshot => {
+                const candidate = snapshot.val().candidate;
+                if (candidate) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+            });
+        }
+
+        // ============================================
+        // UI NAVIGATION
+        // ============================================
+        function showLogin() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('gameScreen').style.display = 'none';
+            showLoginForm();
+        }
+
+        function showLobby() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+            document.getElementById('gameScreen').style.display = 'none';
+
+            if (currentUser) {
+                document.getElementById('userName').textContent = `Welcome, ${currentUser.displayName || currentUser.email.split('@')[0]}!`;
             }
         }
 
-        // ============================================
-        // UTILITY & INITIALIZATION
-        // ============================================
-        function showScreen(screenId) {
-            ['loginScreen', 'lobbyScreen', 'gameScreen'].forEach(id => {
-                document.getElementById(id).style.display = id === screenId ? 'block' : 'none';
-            });
+        function showGame() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('gameScreen').style.display = 'block';
         }
-        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-        document.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }, { once: true });
-
     </script>
 </body>
 </html>
