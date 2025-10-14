@@ -535,10 +535,11 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Firebase SDK v8 (compatible con la sintaxis del script) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 
     <script>
         // ============================================
@@ -1045,28 +1046,6 @@
 
             document.getElementById('controls').style.display = 'none';
             document.getElementById('gameStatus').textContent = 'Esperando al oponente...';
-        }GameId);
-            const gameSnapshot = await gameRef.once('value');
-            const game = gameSnapshot.val();
-            
-            if (game.status !== 'playing') {
-                return; // Ignore if not in playing state
-            }
-            
-            // Highlight selected button
-            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-            document.getElementById(choice + 'Btn').classList.add('selected');
-
-            const isPlayer1 = game.player1 === currentUser.uid;
-            
-            if (isPlayer1) {
-                await gameRef.update({ choice1: choice });
-            } else {
-                await gameRef.update({ choice2: choice });
-            }
-
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('gameStatus').textContent = 'Waiting for opponent...';
         }
 
         async function determineWinner(game) {
