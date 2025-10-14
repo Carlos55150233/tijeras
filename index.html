@@ -6,164 +6,59 @@
 <title>RPS Multiplayer</title>
 <style>
 /* ---------- GENERAL ---------- */
-body, html {
-    margin:0; padding:0;
-    font-family: 'Roboto', sans-serif;
-    background: linear-gradient(#111,#000);
-    color:#fff;
-    height:100%;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-}
-
-/* ---------- LOGIN / REGISTER ---------- */
-#auth-screen {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    width:100%;
-    height:100%;
-}
-#auth-screen input, #auth-screen button {
-    margin:5px;
-    padding:10px;
-    font-size:1em;
-    border-radius:5px;
-    border:none;
-}
-#auth-screen button {
-    background:#0ff;
-    color:#000;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-/* ---------- USERS LIST ---------- */
-#users-list {
-    margin:10px;
-    padding:10px;
-    border:2px solid #0ff;
-    border-radius:10px;
-    max-width:300px;
-}
-.user-item {
-    display:flex;
-    justify-content:space-between;
-    margin:5px 0;
-}
-.user-item button {
-    background:#0ff;
-    border:none;
-    color:#000;
-    border-radius:5px;
-    cursor:pointer;
-}
-
-/* ---------- GAME SCREEN ---------- */
-#game-screen {
-    display:none;
-    width:95%;
-    max-width:700px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-}
-#game-tv {
-    width:100%;
-    aspect-ratio:16/9;
-    border:6px solid #888;
-    border-radius:20px;
-    background:radial-gradient(circle at top left,#333,#111);
-    box-shadow:0 0 20px #0ff inset,0 0 40px #0ff;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    position:relative;
-    overflow:hidden;
-}
-#player-info { display:flex; justify-content:space-between; width:100%; padding:5px;}
-.video-box { width:48%; height:50%; border-radius:10px; overflow:hidden; border:2px solid #0ff;}
-video { width:100%; height:100%; background:#000; }
-
-/* ---------- BUTTONS ---------- */
-#controls {
-    display:flex;
-    justify-content:center;
-    gap:15px;
-    margin:10px;
-}
-.choice-btn {
-    width:80px; height:80px;
-    border-radius:50%;
-    font-size:1.5em;
-    border:3px solid #0ff;
-    background:linear-gradient(#222,#111);
-    color:#0ff;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer;
-    transition: all 0.2s;
-    box-shadow:0 0 10px #0ff inset;
-}
-.choice-btn:hover, .choice-btn.selected {
-    box-shadow:0 0 20px #0ff,0 0 40px #0ff inset;
-}
-
-/* ---------- RESULT ---------- */
-#result {
-    font-size:2em;
-    margin-top:5px;
-    animation:pulse 1s infinite;
-}
-@keyframes pulse {
-    0%,100%{color:#0ff;}50%{color:#fff;}
-}
-
-/* ---------- RESPONSIVE ---------- */
-@media(max-width:600px){
-    .choice-btn { width:60px; height:60px; font-size:1.2em; }
-    #result { font-size:1.5em; }
-}
-
+body, html {margin:0;padding:0;font-family:Roboto,sans-serif;background:#111;color:#fff;height:100%;display:flex;flex-direction:column;align-items:center;}
+input, button {margin:5px;padding:10px;font-size:1em;border-radius:5px;border:none;}
+button {background:#0ff;color:#000;font-weight:bold;cursor:pointer;}
+#auth-screen,#users-list,#game-screen {width:95%;max-width:700px;margin-top:10px;}
+#users-list {border:2px solid #0ff;border-radius:10px;padding:10px;display:none;}
+.user-item {display:flex;justify-content:space-between;margin:5px 0;}
+#game-tv {width:100%;aspect-ratio:16/9;border:6px solid #888;border-radius:20px;background:radial-gradient(circle at top left,#333,#111);box-shadow:0 0 20px #0ff inset,0 0 40px #0ff;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;margin-top:10px;}
+#player-info {display:flex;justify-content:space-between;width:100%;padding:5px;}
+.video-box {width:48%;height:50%;border-radius:10px;overflow:hidden;border:2px solid #0ff;}
+video {width:100%;height:100%;background:#000;}
+#controls {display:flex;justify-content:center;gap:15px;margin:10px;}
+.choice-btn {width:80px;height:80px;border-radius:50%;font-size:1.5em;border:3px solid #0ff;background:linear-gradient(#222,#111);color:#0ff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;box-shadow:0 0 10px #0ff inset;}
+.choice-btn:hover,.choice-btn.selected {box-shadow:0 0 20px #0ff,0 0 40px #0ff inset;}
+#result {font-size:2em;margin-top:5px;animation:pulse 1s infinite;text-align:center;}
+@keyframes pulse{0%,100%{color:#0ff;}50%{color:#fff;}}
+@media(max-width:600px){.choice-btn{width:60px;height:60px;font-size:1.2em;}#result{font-size:1.5em;}}
 </style>
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
+<!-- AUTH -->
 <div id="auth-screen">
-    <h1>RPS Multiplayer</h1>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <button onclick="signup()">Sign Up</button>
+<h1>RPS Multiplayer</h1>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
+<button onclick="signup()">Sign Up</button>
+<button onclick="login()">Login</button>
 </div>
 
 <!-- ONLINE USERS -->
-<div id="users-list" style="display:none;">
-    <h3>Usuarios Online</h3>
-    <div id="users-container"></div>
+<div id="users-list">
+<h3>Usuarios Online</h3>
+<div id="users-container"></div>
 </div>
 
 <!-- GAME SCREEN -->
-<div id="game-screen">
-    <div id="player-info">
-        <div id="player-box">Tú: <span id="player-name">---</span> | Coins: <span id="player-coins">0</span></div>
-        <div id="opponent-box">Oponente: <span id="opponent-name">---</span> | Coins: <span id="opponent-coins">0</span></div>
-    </div>
-    <div id="game-tv">
-        <div id="videos" style="display:flex;width:100%;justify-content:space-around;height:60%;">
-            <div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
-            <div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
-        </div>
-        <div id="result">Esperando...</div>
-    </div>
-    <div id="controls">
-        <div class="choice-btn" data-choice="rock">🪨</div>
-        <div class="choice-btn" data-choice="paper">📄</div>
-        <div class="choice-btn" data-choice="scissors">✂️</div>
-    </div>
+<div id="game-screen" style="display:none;">
+<div id="player-info">
+<div id="player-box">Tú: <span id="player-name">---</span> | Coins: <span id="player-coins">0</span></div>
+<div id="opponent-box">Oponente: <span id="opponent-name">---</span> | Coins: <span id="opponent-coins">0</span></div>
+</div>
+<div id="game-tv">
+<div id="videos" style="display:flex;width:100%;justify-content:space-around;height:60%;">
+<div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
+<div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
+</div>
+<div id="result">Esperando...</div>
+</div>
+<div id="controls">
+<div class="choice-btn" data-choice="rock">🪨</div>
+<div class="choice-btn" data-choice="paper">📄</div>
+<div class="choice-btn" data-choice="scissors">✂️</div>
+</div>
 </div>
 
 <!-- AUDIO -->
@@ -196,50 +91,41 @@ const auth = firebase.auth();
 const db = firebase.database();
 
 // ---------- GLOBAL ----------
-let user = null;
-let localStream = null;
-let peerConnection = null;
-let gameId = null;
-let opponentId = null;
-let localChoice = null;
+let user=null,localStream=null,peerConnection=null,gameId=null,opponentId=null,localChoice=null;
 
 // ---------- UI ----------
-const authScreen = document.getElementById('auth-screen');
-const usersList = document.getElementById('users-list');
-const usersContainer = document.getElementById('users-container');
-const gameScreen = document.getElementById('game-screen');
-const playerNameSpan = document.getElementById('player-name');
-const playerCoinsSpan = document.getElementById('player-coins');
-const opponentNameSpan = document.getElementById('opponent-name');
-const opponentCoinsSpan = document.getElementById('opponent-coins');
-const resultDiv = document.getElementById('result');
-const choiceButtons = document.querySelectorAll('.choice-btn');
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
+const authScreen=document.getElementById('auth-screen');
+const usersList=document.getElementById('users-list');
+const usersContainer=document.getElementById('users-container');
+const gameScreen=document.getElementById('game-screen');
+const playerNameSpan=document.getElementById('player-name');
+const playerCoinsSpan=document.getElementById('player-coins');
+const opponentNameSpan=document.getElementById('opponent-name');
+const opponentCoinsSpan=document.getElementById('opponent-coins');
+const resultDiv=document.getElementById('result');
+const choiceButtons=document.querySelectorAll('.choice-btn');
+const localVideo=document.getElementById('localVideo');
+const remoteVideo=document.getElementById('remoteVideo');
 
 // ---------- AUTH ----------
-function login(){
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email,password)
-        .then(res=>setupUser(res.user))
-        .catch(err=>alert(err.message));
-}
 function signup(){
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email,password)
-        .then(res=>{
-            db.ref('users/'+res.user.uid).set({coins:100,online:true,name:res.user.email});
-            setupUser(res.user);
-        })
-        .catch(err=>alert(err.message));
+    const email=document.getElementById('email').value;
+    const password=document.getElementById('password').value;
+    auth.createUserWithEmailAndPassword(email,password).then(res=>{
+        db.ref('users/'+res.user.uid).set({coins:100,online:true,name:email,history:[]});
+        setupUser(res.user);
+    }).catch(err=>alert(err.message));
+}
+function login(){
+    const email=document.getElementById('email').value;
+    const password=document.getElementById('password').value;
+    auth.signInWithEmailAndPassword(email,password).then(res=>setupUser(res.user)).catch(err=>alert(err.message));
 }
 
-// ---------- SETUP USER ----------
+// ---------- SETUP ----------
 function setupUser(u){
-    user = u;
-    playerNameSpan.textContent = user.email;
+    user=u;
+    playerNameSpan.textContent=user.email;
     authScreen.style.display='none';
     usersList.style.display='block';
     gameScreen.style.display='flex';
@@ -257,7 +143,7 @@ function listOnlineUsers(){
             if(child.key!==user.uid && child.val().online){
                 const div=document.createElement('div');
                 div.classList.add('user-item');
-                div.innerHTML=`<span>${child.val().name}</span> <button onclick="invite('${child.key}')">Invitar</button>`;
+                div.innerHTML=`<span>${child.val().name} | Coins: ${child.val().coins}</span> <button onclick="invite('${child.key}')">Invitar</button>`;
                 usersContainer.appendChild(div);
             }
         });
@@ -266,36 +152,31 @@ function listOnlineUsers(){
 
 // ---------- INVITE ----------
 function invite(uid){
-    opponentId = uid;
-    gameId = db.ref('games').push().key;
-    db.ref('games/'+gameId).set({
-        player1:user.uid,
-        player2:uid,
-        bet:10,
-        status:'waiting'
-    });
+    opponentId=uid;
+    gameId=db.ref('games').push().key;
+    db.ref('games/'+gameId).set({player1:user.uid,player2:uid,bet:10,status:'waiting',choices:{},webrtc:{},timestamp:Date.now()});
     alert('Invitación enviada!');
 }
 
 // ---------- VIDEO ----------
 async function initVideo(){
-    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
     localVideo.srcObject=localStream;
 }
 
 // ---------- CHOICE BUTTONS ----------
 choiceButtons.forEach(btn=>{
     btn.addEventListener('click',()=>{
-        localChoice = btn.dataset.choice;
+        localChoice=btn.dataset.choice;
         choiceButtons.forEach(b=>b.classList.remove('selected'));
         btn.classList.add('selected');
         db.ref('games/'+gameId+'/choices/'+user.uid).set(localChoice);
     });
 });
 
-// ---------- LISTEN FOR GAME ----------
+// ---------- LISTEN GAME ----------
 db.ref('games').on('child_changed',snap=>{
-    const g = snap.val();
+    const g=snap.val();
     if(snap.key===gameId && g.choices){
         const c1=g.choices[g.player1];
         const c2=g.choices[g.player2];
@@ -310,9 +191,7 @@ function determineWinner(c1,c2){
         db.ref('users/'+user.uid+'/coins').transaction(c=>c);
         db.ref('users/'+opponentId+'/coins').transaction(c=>c);
     }else if(
-        (c1==='rock'&&c2==='scissors')||
-        (c1==='scissors'&&c2==='paper')||
-        (c1==='paper'&&c2==='rock')
+        (c1==='rock'&&c2==='scissors')||(c1==='scissors'&&c2==='paper')||(c1==='paper'&&c2==='rock')
     ){
         resultDiv.textContent='Ganaste!';
         db.ref('users/'+user.uid+'/coins').transaction(c=>c+20);
@@ -326,11 +205,11 @@ function determineWinner(c1,c2){
 
 // ---------- WEBRTC ----------
 async function startWebRTC(){
-    peerConnection = new RTCPeerConnection();
+    peerConnection=new RTCPeerConnection();
     localStream.getTracks().forEach(track=>peerConnection.addTrack(track,localStream));
-    peerConnection.ontrack = e=>remoteVideo.srcObject=e.streams[0];
+    peerConnection.ontrack=e=>remoteVideo.srcObject=e.streams[0];
     
-    const offer = await peerConnection.createOffer();
+    const offer=await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     db.ref('games/'+gameId+'/webrtc/offer').set(offer.toJSON());
     db.ref('games/'+gameId+'/webrtc/answer').on('value',async snap=>{
@@ -342,9 +221,7 @@ async function startWebRTC(){
 }
 
 // ---------- DISCONNECT ----------
-window.addEventListener('beforeunload',()=>{
-    db.ref('users/'+user.uid).update({online:false});
-});
+window.addEventListener('beforeunload',()=>{db.ref('users/'+user.uid).update({online:false});});
 </script>
 </body>
 </html>
