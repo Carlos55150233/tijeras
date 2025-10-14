@@ -1,227 +1,1057 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RPS Multiplayer</title>
-<style>
-/* ---------- GENERAL ---------- */
-body, html {margin:0;padding:0;font-family:Roboto,sans-serif;background:#111;color:#fff;height:100%;display:flex;flex-direction:column;align-items:center;}
-input, button {margin:5px;padding:10px;font-size:1em;border-radius:5px;border:none;}
-button {background:#0ff;color:#000;font-weight:bold;cursor:pointer;}
-#auth-screen,#users-list,#game-screen {width:95%;max-width:700px;margin-top:10px;}
-#users-list {border:2px solid #0ff;border-radius:10px;padding:10px;display:none;}
-.user-item {display:flex;justify-content:space-between;margin:5px 0;}
-#game-tv {width:100%;aspect-ratio:16/9;border:6px solid #888;border-radius:20px;background:radial-gradient(circle at top left,#333,#111);box-shadow:0 0 20px #0ff inset,0 0 40px #0ff;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;margin-top:10px;}
-#player-info {display:flex;justify-content:space-between;width:100%;padding:5px;}
-.video-box {width:48%;height:50%;border-radius:10px;overflow:hidden;border:2px solid #0ff;}
-video {width:100%;height:100%;background:#000;}
-#controls {display:flex;justify-content:center;gap:15px;margin:10px;}
-.choice-btn {width:80px;height:80px;border-radius:50%;font-size:1.5em;border:3px solid #0ff;background:linear-gradient(#222,#111);color:#0ff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;box-shadow:0 0 10px #0ff inset;}
-.choice-btn:hover,.choice-btn.selected {box-shadow:0 0 20px #0ff,0 0 40px #0ff inset;}
-#result {font-size:2em;margin-top:5px;animation:pulse 1s infinite;text-align:center;}
-@keyframes pulse{0%,100%{color:#0ff;}50%{color:#fff;}}
-@media(max-width:600px){.choice-btn{width:60px;height:60px;font-size:1.2em;}#result{font-size:1.5em;}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metal RPS Arena</title>
+    <style>
+        :root {
+            --metal-dark-gray: #2c3e50;
+            --metal-mid-gray: #596a7b;
+            --metal-light-gray: #bdc3c7;
+            --metal-silver: #e0e0e0;
+            --glow-blue: #3498db;
+            --glow-red: #e74c3c;
+            --glow-green: #2ecc71;
+            --screen-bg: #0a0f14;
+            --font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: var(--font-family);
+            background-color: var(--metal-dark-gray);
+            color: var(--metal-silver);
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 500px;
+            height: 100%;
+            max-height: 900px;
+            background: linear-gradient(145deg, #4d5c6b, #2f3a46);
+            border-radius: 20px;
+            box-shadow: 
+                inset 0 0 15px rgba(0,0,0,0.6),
+                0 10px 30px rgba(0,0,0,0.5);
+            border: 3px solid #1a222a;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            transform: rotateX(5deg);
+            transition: transform 0.5s;
+        }
+        
+        @media (max-width: 600px) {
+            #app-container {
+                max-width: 100%;
+                max-height: 100%;
+                height: 100dvh;
+                border-radius: 0;
+                padding: 10px;
+                transform: none;
+            }
+        }
+
+        #game-machine {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #top-screen {
+            flex-grow: 1;
+            background-color: var(--screen-bg);
+            border: 5px solid var(--metal-dark-gray);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            clip-path: polygon(5% 0, 95% 0, 100% 10%, 100% 90%, 95% 100%, 5% 100%, 0 90%, 0 10%);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #top-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        #top-screen::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%);
+            animation: screen-flicker 15s infinite linear;
+        }
+
+        @keyframes screen-flicker {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(5px, 5px); }
+            50% { transform: translate(-5px, 0); }
+            75% { transform: translate(0, -5px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        #control-panel {
+            padding-top: 20px;
+        }
+
+        #button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .control-button {
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            border: 3px solid var(--metal-dark-gray);
+            background: linear-gradient(145deg, var(--metal-mid-gray), var(--metal-dark-gray));
+            box-shadow: 
+                -5px -5px 10px rgba(255,255,255,0.1), 
+                5px 5px 10px rgba(0,0,0,0.5),
+                inset 0 0 5px rgba(0,0,0,0.5);
+            font-size: 3rem;
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+        
+        .control-button:hover:not(:disabled) {
+            transform: translateY(-5px);
+            box-shadow: 
+                -5px -5px 15px rgba(52, 152, 219, 0.5), 
+                5px 5px 15px rgba(0,0,0,0.7),
+                inset 0 0 10px rgba(52, 152, 219, 0.3);
+            filter: brightness(1.2);
+        }
+
+        .control-button.selected {
+            transform: translateY(2px);
+            background: var(--glow-blue);
+            box-shadow: 0 0 20px var(--glow-blue), inset 0 0 10px rgba(255,255,255,0.5);
+            color: white;
+        }
+        
+        .control-button:active:not(:disabled) {
+            transform: translateY(2px);
+            filter: brightness(0.9);
+        }
+
+        .control-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+            filter: grayscale(80%);
+        }
+        
+        /* Screen Content Styles */
+        .screen-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 2;
+            position: relative;
+        }
+
+        #login-screen button, #lobby-screen button, .modal button {
+            background: var(--metal-mid-gray);
+            border: 2px solid var(--metal-light-gray);
+            color: var(--metal-silver);
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+            font-size: 1rem;
+        }
+        #login-screen button:hover, #lobby-screen button:hover, .modal button:hover {
+            background: var(--glow-blue);
+            border-color: var(--metal-silver);
+        }
+
+        #login-screen input {
+            background: var(--metal-dark-gray);
+            border: 1px solid var(--metal-mid-gray);
+            color: var(--metal-silver);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        #lobby-screen ul {
+            list-style: none;
+            width: 90%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--metal-mid-gray);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #lobby-screen li {
+            padding: 8px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--metal-mid-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #lobby-screen li:hover {
+            background-color: var(--glow-blue);
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .status-online { background-color: var(--glow-green); }
+        .status-ingame { background-color: var(--glow-red); }
+
+        /* Game Screen Styles */
+        #game-screen-content {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #game-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            padding: 5px 0;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+        .player-info { text-align: center; }
+
+        #video-streams {
+            flex-grow: 1;
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 0;
+        }
+
+        .video-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+            border: 2px solid var(--metal-mid-gray);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px #000;
+        }
+        
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #local-video {
+            transform: scaleX(-1);
+        }
+
+        #game-status-display {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+        
+        #game-status-text {
+            font-size: 5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 20px var(--glow-blue);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .result-win { text-shadow: 0 0 20px var(--glow-green) !important; color: var(--glow-green) !important; }
+        .result-lose { text-shadow: 0 0 20px var(--glow-red) !important; color: var(--glow-red) !important; }
+        .result-draw { text-shadow: 0 0 20px var(--metal-silver) !important; color: var(--metal-silver) !important; }
+
+        /* Modal */
+        .modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, #4d5c6b, #2f3a46);
+            border: 2px solid var(--metal-silver);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            z-index: 100;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .modal-content {
+            text-align: center;
+        }
+        
+        .modal input {
+            width: 100px;
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 10px auto;
+            display: block;
+        }
+
+    </style>
 </head>
 <body>
+    <div id="app-container">
+        <div id="game-machine">
+            <div id="top-screen">
+                <!-- Login Screen -->
+                <div id="login-screen" class="screen-content">
+                    <h2>Metal RPS Arena</h2>
+                    <input type="email" id="email" placeholder="Email" autocomplete="email">
+                    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                    <button id="login-btn">Login</button>
+                    <button id="signup-btn">Sign Up</button>
+                    <p>or</p>
+                    <button id="google-login-btn">Sign In with Google</button>
+                    <p id="auth-error" class="hidden" style="color: var(--glow-red);"></p>
+                </div>
 
-<!-- AUTH -->
-<div id="auth-screen">
-<h1>RPS Multiplayer</h1>
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
-<button onclick="signup()">Sign Up</button>
-<button onclick="login()">Login</button>
-</div>
+                <!-- Lobby Screen -->
+                <div id="lobby-screen" class="screen-content hidden">
+                    <h3>Lobby</h3>
+                    <div id="user-info" style="margin-bottom: 10px;">
+                        <span id="user-display-name"></span> - 💰<span id="user-wallet"></span> coins
+                    </div>
+                    <h4>Online Players:</h4>
+                    <ul id="players-list"></ul>
+                    <button id="logout-btn">Logout</button>
+                </div>
 
-<!-- ONLINE USERS -->
-<div id="users-list">
-<h3>Usuarios Online</h3>
-<div id="users-container"></div>
-</div>
+                <!-- Game Screen -->
+                <div id="game-screen" class="screen-content hidden">
+                    <div id="game-screen-content">
+                        <div id="game-info">
+                            <div class="player-info">
+                                <span id="local-player-name">Player 1</span><br>
+                                💰<span id="local-player-wallet">0</span>
+                            </div>
+                            <div class="player-info">
+                                Bet: 💰<span id="game-bet-amount">0</span>
+                            </div>
+                            <div class="player-info">
+                                <span id="remote-player-name">Player 2</span><br>
+                                💰<span id="remote-player-wallet">0</span>
+                            </div>
+                        </div>
+                        <div id="video-streams">
+                            <div class="video-container">
+                                <video id="local-video" autoplay muted playsinline></video>
+                            </div>
+                            <div class="video-container">
+                                <video id="remote-video" autoplay playsinline></video>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="game-status-display" class="hidden">
+                    <h1 id="game-status-text"></h1>
+                </div>
 
-<!-- GAME SCREEN -->
-<div id="game-screen" style="display:none;">
-<div id="player-info">
-<div id="player-box">Tú: <span id="player-name">---</span> | Coins: <span id="player-coins">0</span></div>
-<div id="opponent-box">Oponente: <span id="opponent-name">---</span> | Coins: <span id="opponent-coins">0</span></div>
-</div>
-<div id="game-tv">
-<div id="videos" style="display:flex;width:100%;justify-content:space-around;height:60%;">
-<div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
-<div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
-</div>
-<div id="result">Esperando...</div>
-</div>
-<div id="controls">
-<div class="choice-btn" data-choice="rock">🪨</div>
-<div class="choice-btn" data-choice="paper">📄</div>
-<div class="choice-btn" data-choice="scissors">✂️</div>
-</div>
-</div>
+                <div id="modal-container"></div>
+            </div>
+            <div id="control-panel">
+                <div id="button-grid">
+                    <button class="control-button" id="rock-btn" data-choice="rock">🪨</button>
+                    <button class="control-button" id="paper-btn" data-choice="paper">📄</button>
+                    <button class="control-button" id="scissors-btn" data-choice="scissors">✂️</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<!-- AUDIO -->
-<audio id="countdown-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-<audio id="alarm-sound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"></audio>
-<audio id="click-sound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
-<audio id="win-sound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-<audio id="lose-sound" src="https://actions.google.com/sounds/v1/cartoon/descending_whistle.ogg"></audio>
-<audio id="draw-sound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script type="module">
+        // --- CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
+            authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
+            databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
+            projectId: "piedra-papel-o-tijeras-5ae53",
+            storageBucket: "piedra-papel-o-tijeras-5ae53.appspot.com",
+            messagingSenderId: "394850327081",
+            appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
+            measurementId: "G-C3VE5H0Y3S"
+        };
+        
+        // --- INITIALIZATION ---
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-<script>
-// ---------- FIREBASE CONFIG ----------
-const firebaseConfig = {
-  apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
-  authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
-  databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
-  projectId: "piedra-papel-o-tijeras-5ae53",
-  storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
-  messagingSenderId: "394850327081",
-  appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
-  measurementId: "G-C3VE5H0Y3S"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
+        // --- GLOBAL STATE ---
+        let appState = {
+            currentUser: null,
+            currentUserProfile: null,
+            currentGameId: null,
+            localStream: null,
+            peerConnection: null,
+            isGameCreator: false,
+            playerChoice: null,
+            activeGameListener: null,
+            invitationTimeout: null,
+            activeInvitationListener: null,
+        };
 
-// ---------- GLOBAL ----------
-let user=null,localStream=null,peerConnection=null,gameId=null,opponentId=null,localChoice=null;
+        // --- DOM ELEMENTS ---
+        const dom = {
+            loginScreen: document.getElementById('login-screen'),
+            lobbyScreen: document.getElementById('lobby-screen'),
+            gameScreen: document.getElementById('game-screen'),
+            authError: document.getElementById('auth-error'),
+            playersList: document.getElementById('players-list'),
+            userDisplayName: document.getElementById('user-display-name'),
+            userWallet: document.getElementById('user-wallet'),
+            modalContainer: document.getElementById('modal-container'),
+            controlButtons: document.querySelectorAll('.control-button'),
+            gameStatusDisplay: document.getElementById('game-status-display'),
+            gameStatusText: document.getElementById('game-status-text'),
+            localVideo: document.getElementById('local-video'),
+            remoteVideo: document.getElementById('remote-video'),
+            localPlayerName: document.getElementById('local-player-name'),
+            remotePlayerName: document.getElementById('remote-player-name'),
+            localPlayerWallet: document.getElementById('local-player-wallet'),
+            remotePlayerWallet: document.getElementById('remote-player-wallet'),
+            gameBetAmount: document.getElementById('game-bet-amount'),
+        };
 
-// ---------- UI ----------
-const authScreen=document.getElementById('auth-screen');
-const usersList=document.getElementById('users-list');
-const usersContainer=document.getElementById('users-container');
-const gameScreen=document.getElementById('game-screen');
-const playerNameSpan=document.getElementById('player-name');
-const playerCoinsSpan=document.getElementById('player-coins');
-const opponentNameSpan=document.getElementById('opponent-name');
-const opponentCoinsSpan=document.getElementById('opponent-coins');
-const resultDiv=document.getElementById('result');
-const choiceButtons=document.querySelectorAll('.choice-btn');
-const localVideo=document.getElementById('localVideo');
-const remoteVideo=document.getElementById('remoteVideo');
-
-// ---------- AUTH ----------
-function signup(){
-    const email=document.getElementById('email').value;
-    const password=document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email,password).then(res=>{
-        db.ref('users/'+res.user.uid).set({coins:100,online:true,name:email,history:[]});
-        setupUser(res.user);
-    }).catch(err=>alert(err.message));
-}
-function login(){
-    const email=document.getElementById('email').value;
-    const password=document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email,password).then(res=>setupUser(res.user)).catch(err=>alert(err.message));
-}
-
-// ---------- SETUP ----------
-function setupUser(u){
-    user=u;
-    playerNameSpan.textContent=user.email;
-    authScreen.style.display='none';
-    usersList.style.display='block';
-    gameScreen.style.display='flex';
-    db.ref('users/'+user.uid).update({online:true});
-    db.ref('users/'+user.uid+'/coins').on('value',snap=>playerCoinsSpan.textContent=snap.val());
-    listOnlineUsers();
-    initVideo();
-}
-
-// ---------- ONLINE USERS ----------
-function listOnlineUsers(){
-    db.ref('users').on('value',snap=>{
-        usersContainer.innerHTML='';
-        snap.forEach(child=>{
-            if(child.key!==user.uid && child.val().online){
-                const div=document.createElement('div');
-                div.classList.add('user-item');
-                div.innerHTML=`<span>${child.val().name} | Coins: ${child.val().coins}</span> <button onclick="invite('${child.key}')">Invitar</button>`;
-                usersContainer.appendChild(div);
+        // --- AUDIO MANAGEMENT ---
+        const sounds = {
+            click: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAA//8/"),
+            countdown: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACEgD8/Pz9ISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhI////"),
+            alarm: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACIh0BAPz9AQEBAPz8/QEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz8/Pz8/Pz8="),
+            win: new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YRAAAAAA/gD+AP4A/gD+APgA+QD5APkA/AD4APkA+AD8APwA/gD+AP4AAAAA"),
+            lose: new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YRAAAAAA/gD+AP4A/AD4APkA+AD8APkA+QD4APwA/gD+AP4A/gAAAAA="),
+            draw: new Audio("data:audio/wav;base64,UklGRjAAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQ4AAAAA/gD+AP4A/AD4APgA/AD+AP4AAAAA"),
+            play: (sound) => {
+                try {
+                    sounds[sound].currentTime = 0;
+                    sounds[sound].play().catch(e => {});
+                } catch (e) {}
             }
-        });
-    });
-}
+        };
 
-// ---------- INVITE ----------
-function invite(uid){
-    opponentId=uid;
-    gameId=db.ref('games').push().key;
-    db.ref('games/'+gameId).set({player1:user.uid,player2:uid,bet:10,status:'waiting',choices:{},webrtc:{},timestamp:Date.now()});
-    alert('Invitación enviada!');
-}
+        // --- UI MANAGER ---
+        const ui = {
+            showScreen: (screen) => {
+                [dom.loginScreen, dom.lobbyScreen, dom.gameScreen].forEach(s => s.classList.add('hidden'));
+                if(screen) screen.classList.remove('hidden');
+            },
+            showAuthError: (message) => {
+                dom.authError.textContent = message;
+                dom.authError.classList.remove('hidden');
+            },
+            hideAuthError: () => dom.authError.classList.add('hidden'),
+            renderPlayers: (players) => {
+                dom.playersList.innerHTML = '';
+                Object.keys(players).forEach(uid => {
+                    if (uid === appState.currentUser.uid) return;
+                    const player = players[uid];
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span><span class="status-dot ${player.status === 'online' ? 'status-online' : 'status-ingame'}"></span>${player.displayName}</span>
+                        <span>💰${player.wallet}</span>`;
+                    if (player.status === 'online') {
+                        li.onclick = () => ui.showChallengeModal(uid, player.displayName);
+                    } else {
+                        li.style.cursor = 'not-allowed';
+                        li.style.opacity = '0.5';
+                    }
+                    dom.playersList.appendChild(li);
+                });
+            },
+            updateLobbyHeader: () => {
+                if(appState.currentUserProfile) {
+                    dom.userDisplayName.textContent = appState.currentUserProfile.displayName;
+                    dom.userWallet.textContent = appState.currentUserProfile.wallet;
+                }
+            },
+            showChallengeModal: (opponentId, opponentName) => {
+                const modalHTML = `
+                    <div class="modal" id="challenge-modal">
+                        <div class="modal-content">
+                            <h3>Challenge ${opponentName}</h3>
+                            <p>Enter bet amount (min 5):</p>
+                            <input type="number" id="bet-amount-input" value="5" min="5">
+                            <button id="send-challenge-btn">Send Challenge</button>
+                            <button id="cancel-challenge-btn">Cancel</button>
+                        </div>
+                    </div>
+                `;
+                dom.modalContainer.innerHTML = modalHTML;
+                document.getElementById('send-challenge-btn').onclick = () => {
+                    const betAmount = parseInt(document.getElementById('bet-amount-input').value);
+                    if (betAmount >= 5 && betAmount <= appState.currentUserProfile.wallet) {
+                        game.sendInvitation(opponentId, opponentName, betAmount);
+                        ui.hideModal();
+                    } else {
+                        alert("Invalid bet amount. Check your wallet balance or the minimum bet.");
+                    }
+                };
+                document.getElementById('cancel-challenge-btn').onclick = ui.hideModal;
+            },
+            showInvitationModal: (invitationSnap) => {
+                if (document.getElementById('invitation-modal')) return; // Avoid showing multiple
+                const invitation = invitationSnap.val();
+                const invitationRef = invitationSnap.ref;
 
-// ---------- VIDEO ----------
-async function initVideo(){
-    localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-    localVideo.srcObject=localStream;
-}
+                // FIX: Add a listener to the game object to auto-remove the modal if the game is cancelled
+                const gameRef = db.ref(`games/${invitation.gameId}`);
+                const gameListener = gameRef.on('value', gameSnap => {
+                    if (!gameSnap.exists()) {
+                        ui.hideModal();
+                        gameRef.off('value', gameListener);
+                    }
+                });
 
-// ---------- CHOICE BUTTONS ----------
-choiceButtons.forEach(btn=>{
-    btn.addEventListener('click',()=>{
-        localChoice=btn.dataset.choice;
-        choiceButtons.forEach(b=>b.classList.remove('selected'));
-        btn.classList.add('selected');
-        db.ref('games/'+gameId+'/choices/'+user.uid).set(localChoice);
-    });
-});
+                const modalHTML = `
+                    <div class="modal" id="invitation-modal">
+                        <div class="modal-content">
+                            <h3>Incoming Challenge!</h3>
+                            <p>${invitation.fromName} challenges you to a game for 💰${invitation.bet} coins!</p>
+                            <button id="accept-challenge-btn">Accept</button>
+                            <button id="decline-challenge-btn">Decline</button>
+                        </div>
+                    </div>
+                `;
+                dom.modalContainer.innerHTML = modalHTML;
+                document.getElementById('accept-challenge-btn').onclick = () => {
+                    gameRef.off('value', gameListener); // Clean up listener
+                    if (appState.currentUserProfile.wallet >= invitation.bet) {
+                        game.acceptInvitation(invitation.gameId, invitationRef);
+                        ui.hideModal();
+                    } else {
+                        alert("You don't have enough coins to accept this challenge!");
+                        game.declineInvitation(invitation.gameId, invitationRef);
+                        ui.hideModal();
+                    }
+                };
+                document.getElementById('decline-challenge-btn').onclick = () => {
+                    gameRef.off('value', gameListener); // Clean up listener
+                    game.declineInvitation(invitation.gameId, invitationRef);
+                    ui.hideModal();
+                };
+            },
+            showWaitingModal: (opponentName, gameId, opponentId, invitationKey) => {
+                const modalHTML = `
+                    <div class="modal" id="waiting-modal">
+                        <div class="modal-content">
+                            <h3>Invitation Sent</h3>
+                            <p>Waiting for ${opponentName} to respond...</p>
+                            <button id="cancel-invitation-btn">Cancel Invitation</button>
+                        </div>
+                    </div>
+                `;
+                dom.modalContainer.innerHTML = modalHTML;
+                document.getElementById('cancel-invitation-btn').onclick = () => {
+                    game.cancelInvitation(gameId, opponentId, invitationKey);
+                };
+            },
+            hideModal: () => {
+                dom.modalContainer.innerHTML = '';
+            },
+            showGameStatus: (text, type = '', duration = 0) => {
+                dom.gameStatusText.textContent = text;
+                dom.gameStatusText.className = type ? `result-${type}` : '';
+                dom.gameStatusDisplay.classList.remove('hidden');
+                if(duration > 0) {
+                    setTimeout(() => dom.gameStatusDisplay.classList.add('hidden'), duration);
+                }
+            },
+            hideGameStatus: () => dom.gameStatusDisplay.classList.add('hidden'),
+            resetControlButtons: (disabled = false) => {
+                dom.controlButtons.forEach(btn => {
+                    btn.classList.remove('selected');
+                    btn.disabled = disabled;
+                });
+            },
+            updateGameInfo: (gameData) => {
+                if (!gameData || !gameData.players) return;
+                
+                const myUid = appState.currentUser.uid;
+                const p1Data = gameData.players.p1;
+                const p2Data = gameData.players.p2;
 
-// ---------- LISTEN GAME ----------
-db.ref('games').on('child_changed',snap=>{
-    const g=snap.val();
-    if(snap.key===gameId && g.choices){
-        const c1=g.choices[g.player1];
-        const c2=g.choices[g.player2];
-        if(c1 && c2) determineWinner(c1,c2);
-    }
-});
+                const amP1 = p1Data.uid === myUid;
+                const localPlayer = amP1 ? p1Data : p2Data;
+                const remotePlayer = amP1 ? p2Data : p1Data;
+                
+                dom.localPlayerName.textContent = localPlayer.displayName;
+                dom.localPlayerWallet.textContent = localPlayer.wallet;
+                dom.remotePlayerName.textContent = remotePlayer.displayName;
+                dom.remotePlayerWallet.textContent = remotePlayer.wallet;
+                dom.gameBetAmount.textContent = gameData.bet * 2;
+            }
+        };
 
-// ---------- DETERMINE WINNER ----------
-function determineWinner(c1,c2){
-    if(c1===c2){
-        resultDiv.textContent='Empate';
-        db.ref('users/'+user.uid+'/coins').transaction(c=>c);
-        db.ref('users/'+opponentId+'/coins').transaction(c=>c);
-    }else if(
-        (c1==='rock'&&c2==='scissors')||(c1==='scissors'&&c2==='paper')||(c1==='paper'&&c2==='rock')
-    ){
-        resultDiv.textContent='Ganaste!';
-        db.ref('users/'+user.uid+'/coins').transaction(c=>c+20);
-        db.ref('users/'+opponentId+'/coins').transaction(c=>c-10);
-    }else{
-        resultDiv.textContent='Perdiste!';
-        db.ref('users/'+user.uid+'/coins').transaction(c=>c-10);
-        db.ref('users/'+opponentId+'/coins').transaction(c=>c+20);
-    }
-}
+        // --- AUTH MANAGER ---
+        const authManager = {
+            init: () => {
+                document.getElementById('login-btn').addEventListener('click', authManager.login);
+                document.getElementById('signup-btn').addEventListener('click', authManager.signup);
+                document.getElementById('google-login-btn').addEventListener('click', authManager.googleLogin);
+                document.getElementById('logout-btn').addEventListener('click', authManager.logout);
+                
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        appState.currentUser = user;
+                        dbManager.onUserConnect();
+                        dbManager.listenToProfile(user.uid);
+                        dbManager.listenToPlayers();
+                        dbManager.listenForInvitations(user.uid);
+                        ui.showScreen(dom.lobbyScreen);
+                    } else {
+                        if (appState.currentUser) {
+                           dbManager.onUserDisconnect(appState.currentUser.uid);
+                        }
+                        appState.currentUser = null;
+                        appState.currentUserProfile = null;
+                        ui.showScreen(dom.loginScreen);
+                    }
+                });
+            },
+            login: () => auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(e => ui.showAuthError(e.message)),
+            signup: () => auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(cred => dbManager.createUserProfile(cred.user)).catch(e => ui.showAuthError(e.message)),
+            googleLogin: () => auth.signInWithPopup(googleProvider).then(result => { if (result.additionalUserInfo.isNewUser) { dbManager.createUserProfile(result.user); }}).catch(e => ui.showAuthError(e.message)),
+            logout: () => auth.signOut(),
+        };
 
-// ---------- WEBRTC ----------
-async function startWebRTC(){
-    peerConnection=new RTCPeerConnection();
-    localStream.getTracks().forEach(track=>peerConnection.addTrack(track,localStream));
-    peerConnection.ontrack=e=>remoteVideo.srcObject=e.streams[0];
+        // --- DATABASE MANAGER ---
+        const dbManager = {
+            createUserProfile: (user) => db.ref(`users/${user.uid}`).set({ uid: user.uid, displayName: user.displayName || user.email.split('@')[0], email: user.email, wallet: 100, status: 'online'}),
+            onUserConnect: () => {
+                const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
+                db.ref('.info/connected').on('value', snap => {
+                    if (snap.val() === false) return;
+                    userStatusRef.onDisconnect().set('offline').then(() => userStatusRef.set('online'));
+                });
+            },
+            onUserDisconnect: (uid) => db.ref(`/users/${uid}/status`).set('offline'),
+            updateUserStatus: (status) => { if(appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status); },
+            listenToProfile: (uid) => db.ref(`users/${uid}`).on('value', snap => { appState.currentUserProfile = snap.val(); ui.updateLobbyHeader(); }),
+            listenToPlayers: () => db.ref('users').on('value', snap => ui.renderPlayers(snap.val() || {})),
+            listenForInvitations: (uid) => db.ref(`invitations/${uid}`).on('child_added', ui.showInvitationModal)
+        };
+        
+        // --- WEBRTC MANAGER ---
+        const webrtc = {
+            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
+            start: async () => {
+                try {
+                    appState.peerConnection = new RTCPeerConnection(webrtc.config);
+                    appState.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    dom.localVideo.srcObject = appState.localStream;
+                    appState.localStream.getTracks().forEach(track => appState.peerConnection.addTrack(track, appState.localStream));
+                    appState.peerConnection.ontrack = e => { dom.remoteVideo.srcObject = e.streams[0]; };
     
-    const offer=await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    db.ref('games/'+gameId+'/webrtc/offer').set(offer.toJSON());
-    db.ref('games/'+gameId+'/webrtc/answer').on('value',async snap=>{
-        if(snap.val()) await peerConnection.setRemoteDescription(snap.val());
-    });
-    peerConnection.onicecandidate=e=>{
-        if(e.candidate) db.ref('games/'+gameId+'/webrtc/candidates/'+user.uid).push(e.candidate.toJSON());
-    };
-}
+                    const candidatesRef = db.ref(`games/${appState.currentGameId}/iceCandidates`);
+                    appState.peerConnection.onicecandidate = e => { if(e.candidate) candidatesRef.push(e.candidate.toJSON()); };
+                    candidatesRef.on('child_added', snap => { if(snap.exists()) appState.peerConnection.addIceCandidate(new RTCIceCandidate(snap.val())); });
+    
+                    if (appState.isGameCreator) {
+                        const offer = await appState.peerConnection.createOffer();
+                        await appState.peerConnection.setLocalDescription(offer);
+                        db.ref(`games/${appState.currentGameId}/offer`).set({ sdp: offer.sdp, type: offer.type });
+                        db.ref(`games/${appState.currentGameId}/answer`).on('value', async snap => { if(snap.exists() && !appState.peerConnection.currentRemoteDescription) await appState.peerConnection.setRemoteDescription(new RTCSessionDescription(snap.val())); });
+                    } else {
+                         db.ref(`games/${appState.currentGameId}/offer`).on('value', async snap => {
+                            if(snap.exists() && !appState.peerConnection.currentRemoteDescription) {
+                                await appState.peerConnection.setRemoteDescription(new RTCSessionDescription(snap.val()));
+                                const answer = await appState.peerConnection.createAnswer();
+                                await appState.peerConnection.setLocalDescription(answer);
+                                db.ref(`games/${appState.currentGameId}/answer`).set({ sdp: answer.sdp, type: answer.type });
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error("WebRTC start failed:", e);
+                    alert("Could not access camera/microphone. Please check permissions.");
+                    game.leave();
+                }
+            },
+            stop: () => {
+                if (appState.localStream) appState.localStream.getTracks().forEach(track => track.stop());
+                if (appState.peerConnection) appState.peerConnection.close();
+                dom.localVideo.srcObject = null;
+                dom.remoteVideo.srcObject = null;
+                appState.localStream = null;
+                appState.peerConnection = null;
+            }
+        };
+        
+        // --- GAME MANAGER (REBUILT FOR ROBUSTNESS) ---
+        const game = {
+            init: () => {
+                dom.controlButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        sounds.play('click');
+                        appState.playerChoice = e.currentTarget.dataset.choice;
+                        dom.controlButtons.forEach(b => b.classList.remove('selected'));
+                        e.currentTarget.classList.add('selected');
+                        game.submitChoice();
+                    });
+                });
+                ui.resetControlButtons(true);
+            },
+            sendInvitation: (opponentId, opponentName, bet) => {
+                const gameId = db.ref('games').push().key;
+                const gameData = {
+                    bet,
+                    status: 'pending',
+                    players: {
+                        p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null },
+                        p2: { uid: opponentId, displayName: opponentName, choice: null } // Wallet will be fetched on join
+                    },
+                    createdAt: firebase.database.ServerValue.TIMESTAMP,
+                };
 
-// ---------- DISCONNECT ----------
-window.addEventListener('beforeunload',()=>{db.ref('users/'+user.uid).update({online:false});});
-</script>
+                const gameRef = db.ref(`games/${gameId}`);
+                const invitationRef = db.ref(`invitations/${opponentId}`).push(); // FIX: Get ref with key
+                const invitationKey = invitationRef.key;
+
+                gameRef.set(gameData).then(() => {
+                    invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName });
+                    ui.showWaitingModal(opponentName, gameId, opponentId, invitationKey); // FIX: Pass IDs for cancellation
+                    
+                    appState.invitationTimeout = setTimeout(() => game.cancelInvitation(gameId, opponentId, invitationKey, "Invitation timed out."), 30000); // FIX: Pass IDs to timeout
+
+                    appState.activeInvitationListener = gameRef.on('value', snap => {
+                        const updatedGameData = snap.val();
+                        if (!updatedGameData) { // Game was declined/cancelled
+                            if (appState.activeInvitationListener) {
+                                gameRef.off('value', appState.activeInvitationListener);
+                                appState.activeInvitationListener = null;
+                                clearTimeout(appState.invitationTimeout);
+                                ui.hideModal();
+                                alert("Invitation was declined or cancelled.");
+                            }
+                            return;
+                        }
+                        if (updatedGameData.status === 'active') { // Opponent accepted
+                            gameRef.off('value', appState.activeInvitationListener);
+                            appState.activeInvitationListener = null;
+                            clearTimeout(appState.invitationTimeout);
+                            ui.hideModal();
+                            game.join(gameId, true);
+                        }
+                    });
+                });
+            },
+            cancelInvitation: (gameId, opponentId, invitationKey, reason = null) => { // FIX: Accept IDs to remove invitation
+                 db.ref(`games/${gameId}`).remove();
+                 if (opponentId && invitationKey) {
+                    db.ref(`invitations/${opponentId}/${invitationKey}`).remove();
+                 }
+                 // The listener in sendInvitation will handle the UI cleanup for the sender.
+                 if (reason) alert(reason);
+            },
+            declineInvitation: (gameId, invitationRef) => {
+                 db.ref(`games/${gameId}`).remove();
+                 if(invitationRef) invitationRef.remove();
+            },
+            acceptInvitation: (gameId, invitationRef) => {
+                const gameRef = db.ref(`games/${gameId}`);
+                db.ref(`users/${appState.currentUser.uid}/wallet`).once('value', (snap) => {
+                    const myWallet = snap.val();
+                    gameRef.transaction(gameData => {
+                        if (gameData && gameData.status === 'pending') {
+                            gameData.status = 'active';
+                            gameData.players.p2.wallet = myWallet; // Add acceptor's wallet info
+                            return gameData;
+                        }
+                        return; // Abort if not pending
+                    }).then(result => {
+                        if (result.committed) {
+                            if(invitationRef) invitationRef.remove();
+                            game.join(gameId, false);
+                        } else {
+                            alert("Failed to join game. It might have been cancelled.");
+                            ui.hideModal();
+                        }
+                    });
+                });
+            },
+            join: (gameId, isCreator) => {
+                appState.currentGameId = gameId;
+                appState.isGameCreator = isCreator;
+                dbManager.updateUserStatus('ingame');
+                ui.showScreen(dom.gameScreen);
+                webrtc.start();
+
+                const gameRef = db.ref(`games/${gameId}`);
+                appState.activeGameListener = gameRef.on('value', (snap) => game.stateMachine(snap.val()));
+            },
+            stateMachine: (gameData) => {
+                if (!gameData) {
+                    if (appState.currentGameId) alert("The game has ended or the opponent disconnected.");
+                    game.leave();
+                    return;
+                }
+
+                ui.updateGameInfo(gameData);
+                
+                switch (gameData.status) {
+                    case 'active':
+                        ui.hideGameStatus();
+                        if (appState.isGameCreator) game.startCountdown();
+                        break;
+                    case 'countdown':
+                        game.handleCountdown(gameData);
+                        break;
+                    case 'choose':
+                        // Only enable buttons if user hasn't chosen yet
+                        const myPlayerKey = appState.isGameCreator ? 'p1' : 'p2';
+                        if (!gameData.players[myPlayerKey].choice) {
+                            ui.resetControlButtons(false);
+                        }
+                        break;
+                    case 'reveal':
+                        ui.resetControlButtons(true);
+                        game.revealResult(gameData);
+                        break;
+                    case 'finished':
+                        // The creator will show post-game options.
+                        if (appState.isGameCreator && !document.querySelector('.modal')) {
+                            game.showPostGameOptions();
+                        }
+                        break;
+                }
+            },
+            startCountdown: () => {
+                 const gameRef = db.ref(`games/${appState.currentGameId}`);
+                 gameRef.transaction(gameData => {
+                    if (gameData && gameData.status === 'active') {
+                        gameData.status = 'countdown';
+                        gameData.countdown = 3;
+                        return gameData;
+                    }
+                    return;
+                }).then(result => {
+                    if (!result.committed) return;
+                    let count = 2;
+                    const interval = setInterval(() => {
+                        db.ref(`games/${appState.currentGameId}/countdown`).set(count);
+                        if (count < 0) {
+                            clearInterval(interval);
+                             // Server-less check for both players' choices
+                            const gameRef = db.ref(`games/${appState.currentGameId}`);
+                            gameRef.on('value', function onChoice(snap) {
+                                const gameData = snap.val();
+                                if (!gameData) {
+                                    gameRef.off('value', onChoice);
+                                    return;
+                                }
+                                const p1Choice = gameData.players?.p1?.choice;
+                                const p2Choice = gameData.players?.p2?.choice;
+                                if(p1Choice && p2Choice) {
+                                    gameRef.off('value', onChoice);
+                                    if(appState.isGameCreator) {
+                                        game.processGameResult(gameData);
+                                    }
+                                }
+                            });
+                            db.ref(`games/${appState.currentGameId}/status`).set('choose');
+                        }
+                        count--;
+                    }, 1000);
+                });
+            },
+            handleCountdown: (gameData) => {
+                const count = gameData.countdown;
+                if (count > 0) {
+                    ui.showGameStatus(count);
+                    sounds.play('countdown');
+                } else if (count === 0) {
+                    ui.showGameStatus("GO!");
+                    sounds.play('alarm');
+                    setTimeout(ui.hideGameStatus, 1000);
+                    appState.playerChoice = null;
+                    ui.resetControlButtons();
+                }
+            },
+            submitChoice: () => {
+                if(!appState.currentGameId || !appState.playerChoice) return;
+                const playerKey = appState.isGameCreator ? 'p1' : 'p2';
+                db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice);
+                ui.resetControlButtons(true); // Disable all buttons after choice
+            },
+             processGameResult: (gameData) => { // Was part of revealResult
+                const gameRef = db.ref(`games/${appState.currentGameId}`);
+                gameRef.transaction(currentData => {
+                    if (currentData && currentData.status === 'choose') {
+                        currentData.status = 'reveal';
+                        return currentData;
+                    }
+                    return;
+                }).then(async (result) => {
+                    if (!result.committed) return;
+                    const { p1, p2 } = result.snapshot.val().players;
+                    const winnerChoice = game.getWinner(p1.choice, p2.choice);
+                    await game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
+                    db.ref(`games/${appState.currentGameId}/status`).set('finished');
+                });
+            },
+            revealResult: (gameData) => {
+                const { p1, p2 } = gameData.players;
+                const myChoice = appState.isGameCreator ? p1.choice : p2.choice;
+                const opponentChoice = appState.isGameCreator ? p2.choice : p1.choice;
+                
+                ui.showGameStatus(`${myChoice?.toUpperCase() || '?'} vs ${opponentChoice?.toUpperCase() || '?'}`);
+
+                const winnerChoice = game.getWinner(p1.choice, p2.choice);
+
+                setTimeout(() => {
+                    let resultText, resultType;
+                    if (winnerChoice === null) {
+                        resultText = "Draw!"; resultType = "draw"; sounds.play('draw');
+                    } else if (myChoice === winnerChoice) {
+                        resultText = "You Win!"; resultType = "win"; sounds.play('win');
+                    } else {
+                        resultText = "You Lose!"; resultType = "lose"; sounds.play('lose');
+                    }
+                    ui.showGameStatus(resultText, resultType);
+                }, 2000);
+            },
+            getWinner: (c1, c2) => (c1 === c2) ? null : ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'scissors' && c2 === 'paper') || (c1 === 'paper' && c2 === 'rock')) ? c1 : c2,
+            updateWallets: (gameData, winnerChoice, p1Id, p2Id) => {
+                if (winnerChoice === null) return Promise.resolve();
+                const { bet } = gameData;
+                const winnerId = gameData.players.p1.choice === winnerChoice ? p1Id : p2Id;
+                const loserId = winnerId === p1Id ? p2Id : p1Id;
+                
+                const winnerRef = db.ref(`users/${winnerId}/wallet`);
+                const loserRef = db.ref(`users/${loserId}/wallet`);
+
+                return Promise.all([
+                    winnerRef.transaction(wallet => (wallet || 0) + bet),
+                    loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet)) // Ensure wallet doesn't go negative
+                ]);
+            },
+            showPostGameOptions: () => {
+                const modalHTML = `
+                    <div class="modal">
+                        <div class="modal-content">
+                            <h3>Game Over</h3>
+                            <button id="exit-game-btn">Exit to Lobby</button>
+                        </div>
+                    </div>`;
+                dom.modalContainer.innerHTML = modalHTML;
+                document.getElementById('exit-game-btn').onclick = () => {
+                     if (appState.isGameCreator) {
+                        db.ref(`games/${appState.currentGameId}`).remove();
+                    } else {
+                        game.leave();
+                    }
+                }
+            },
+            leave: () => {
+                ui.hideModal();
+                webrtc.stop();
+                
+                if (appState.currentGameId && appState.activeGameListener) {
+                    db.ref(`games/${appState.currentGameId}`).off('value', appState.activeGameListener);
+                }
+                
+                dbManager.updateUserStatus('online');
+                appState.currentGameId = null;
+                appState.isGameCreator = false;
+                appState.activeGameListener = null;
+                ui.showScreen(dom.lobbyScreen);
+                ui.hideGameStatus();
+                ui.resetControlButtons(true);
+            }
+        };
+
+        // --- APP INITIALIZATION ---
+        function init() {
+            console.log("Initializing Metal RPS Arena...");
+            authManager.init();
+            game.init();
+            window.addEventListener('beforeunload', () => {
+                if (appState.currentUser) {
+                    dbManager.onUserDisconnect(appState.currentUser.uid);
+                }
+            });
+        }
+
+        init();
+    </script>
 </body>
 </html>
