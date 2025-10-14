@@ -11,14 +11,15 @@
             box-sizing: border-box;
         }
 
-        body {
+        /* MEJORA 4: Evitar el scroll en la página */
+        html, body {
+            height: 100%;
+            overflow: hidden; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow-x: hidden;
         }
 
         /* Login Screen */
@@ -169,7 +170,7 @@
             background: #000;
             border-radius: 10px;
             overflow: hidden;
-            aspect-ratio: 4/3;
+            aspect-ratio: 16/9;
         }
 
         .player-video video {
@@ -178,6 +179,26 @@
             object-fit: cover;
             display: block;
             background: #000;
+        }
+        
+        /* MEJORA 3: Efecto espejo para la cámara local (modo selfie) */
+        #localVideo {
+            transform: scaleX(-1);
+        }
+
+        .mute-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 20;
+            display: none;
         }
 
         .player-label {
@@ -491,7 +512,8 @@
                         <div class="player-balance" id="localPlayerBalance">💰 100</div>
                     </div>
                     <div class="player-video">
-                        <video id="remoteVideo" autoplay playsinline></video>
+                        <video id="remoteVideo" playsinline></video>
+                        <div id="remoteMuteIcon" class="mute-icon">🔇</div>
                         <div class="player-label" id="remotePlayerLabel">Opponent</div>
                         <div class="player-balance" id="remotePlayerBalance">💰 100</div>
                     </div>
@@ -544,7 +566,6 @@
     <script>
         // ============================================
         // FIREBASE CONFIGURATION
-        // Replace with your Firebase project config
         // ============================================
         const firebaseConfig = {
             apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
@@ -570,14 +591,6 @@
         let localStream = null;
         let peerConnection = null;
         let pendingChallenge = null;
-        let gameState = {
-            bet: 0,
-            player1: null,
-            player2: null,
-            player1Choice: null,
-            player2Choice: null,
-            status: 'waiting'
-        };
 
         // WebRTC Configuration
         const rtcConfig = {
@@ -590,39 +603,33 @@
         // ============================================
         // SOUND EFFECTS
         // ============================================
+        let audioCtx;
         const sounds = {
-            countdown: () => playBeep(400, 0.1),
-            alarm: () => playBeep(800, 0.3),
             click: () => playBeep(600, 0.05),
             win: () => playMelody([523, 659, 784], 0.2),
             lose: () => playMelody([392, 330, 262], 0.2),
             draw: () => playBeep(440, 0.2)
         };
-
         function playBeep(frequency, duration) {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-            
             oscillator.frequency.value = frequency;
             oscillator.type = 'sine';
-            gainNode.gain.value = 0.3;
-            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
             oscillator.start();
             oscillator.stop(audioCtx.currentTime + duration);
         }
-
         function playMelody(frequencies, duration) {
             frequencies.forEach((freq, i) => {
                 setTimeout(() => playBeep(freq, duration), i * duration * 1000);
             });
         }
-
+        
         // ============================================
-        // AUTHENTICATION
+        // AUTHENTICATION & USER INIT
         // ============================================
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -636,507 +643,275 @@
         async function loginWithEmail() {
             const email = document.getElementById('emailInput').value;
             const password = document.getElementById('passwordInput').value;
-            
-            if (!email || !password) {
-                alert('Por favor ingresa correo y contraseña');
-                return;
-            }
-
-            if (password.length < 6) {
-                alert('La contraseña debe tener al menos 6 caracteres');
-                return;
-            }
-
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-                alert('¡Sesión iniciada correctamente! 🎮');
-            } catch (error) {
-                if (error.code === 'auth/user-not-found') {
-                    alert('Cuenta no encontrada. Por favor crea una cuenta primero.');
-                } else if (error.code === 'auth/wrong-password') {
-                    alert('Contraseña incorrecta. Intenta de nuevo.');
-                } else if (error.code === 'auth/invalid-email') {
-                    alert('Dirección de correo inválida.');
-                } else {
-                    alert('Error al iniciar sesión: ' + error.message);
-                }
-            }
+            if (!email || password.length < 6) return alert('Correo o contraseña inválidos.');
+            try { await auth.signInWithEmailAndPassword(email, password); } 
+            catch (error) { alert('Error: ' + error.message); }
         }
 
         async function registerWithEmail() {
             const email = document.getElementById('emailInput').value;
             const password = document.getElementById('passwordInput').value;
-            
-            if (!email || !password) {
-                alert('Por favor ingresa correo y contraseña');
-                return;
-            }
-
-            if (password.length < 6) {
-                alert('La contraseña debe tener al menos 6 caracteres');
-                return;
-            }
-
-            if (!email.includes('@') || !email.includes('.')) {
-                alert('Por favor ingresa un correo válido');
-                return;
-            }
-
-            try {
-                await auth.createUserWithEmailAndPassword(email, password);
-                alert('¡Cuenta creada exitosamente! 🎉\n¡Empiezas con 100 monedas!');
-            } catch (error) {
-                if (error.code === 'auth/email-already-in-use') {
-                    alert('Este correo ya está registrado. Por favor inicia sesión.');
-                } else if (error.code === 'auth/weak-password') {
-                    alert('Contraseña muy débil. Usa al menos 6 caracteres.');
-                } else if (error.code === 'auth/invalid-email') {
-                    alert('Formato de correo inválido.');
-                } else {
-                    alert('Error al registrarse: ' + error.message);
-                }
-            }
+            if (!email.includes('@') || password.length < 6) return alert('Correo o contraseña inválidos.');
+            try { await auth.createUserWithEmailAndPassword(email, password); } 
+            catch (error) { alert('Error: ' + error.message); }
         }
 
         async function loginWithGoogle() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            try {
-                await auth.signInWithPopup(provider);
-            } catch (error) {
-                alert('Error al iniciar con Google: ' + error.message);
-            }
+            try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); } 
+            catch (error) { alert('Error: ' + error.message); }
         }
 
         function logout() {
             if (currentUser) {
-                database.ref('users/' + currentUser.uid + '/status').set('offline');
-                database.ref('users/' + currentUser.uid + '/lastSeen').set(Date.now());
+                database.ref(`users/${currentUser.uid}/status`).set('offline');
             }
-            
-            // Stop listening to online users
-            database.ref('users').off();
-            
             auth.signOut();
         }
 
-        // ============================================
-        // USER INITIALIZATION
-        // ============================================
         async function initializeUser() {
-            const userRef = database.ref('users/' + currentUser.uid);
-            
-            // Initialize user data first
+            const userRef = database.ref(`users/${currentUser.uid}`);
             const snapshot = await userRef.once('value');
             const userData = snapshot.val() || {};
-            
-            // Set complete user data
+
             await userRef.set({
                 email: currentUser.email,
                 status: 'online',
-                lastSeen: Date.now(),
-                wallet: userData.wallet || 100,
+                wallet: userData.wallet !== undefined ? userData.wallet : 100,
                 uid: currentUser.uid
             });
-
-            // Set user offline on disconnect
-            userRef.child('status').onDisconnect().set('offline');
-            userRef.child('lastSeen').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
-
-            // Listen for wallet changes
-            userRef.child('wallet').on('value', snapshot => {
-                const balance = snapshot.val() || 0;
+            userRef.onDisconnect().update({ status: 'offline' });
+            
+            userRef.child('wallet').on('value', snap => {
+                const balance = snap.val() || 0;
                 document.getElementById('userBalance').textContent = balance;
-                document.getElementById('localPlayerBalance').textContent = '💰 ' + balance;
+                if(document.getElementById('gameScreen').style.display !== 'none') {
+                    document.getElementById('localPlayerBalance').textContent = '💰 ' + balance;
+                }
             });
 
-            // Listen for incoming challenges
-            userRef.child('challenge').on('value', snapshot => {
-                const challenge = snapshot.val();
-                if (challenge && challenge.from && challenge.from !== currentUser.uid) {
+            userRef.child('challenge').on('value', snap => {
+                const challenge = snap.val();
+                if (challenge && challenge.from !== currentUser.uid) {
                     pendingChallenge = challenge;
                     showChallengeModal(challenge);
                 }
             });
 
-            document.getElementById('userName').textContent = 'Bienvenido, ' + (currentUser.email.split('@')[0]);
+            document.getElementById('userName').textContent = `Bienvenido, ${currentUser.email.split('@')[0]}`;
             showScreen('lobbyScreen');
             loadOnlineUsers();
         }
 
         // ============================================
-        // LOBBY FUNCTIONS
+        // LOBBY & CHALLENGE
         // ============================================
         function loadOnlineUsers() {
             const usersRef = database.ref('users');
-            
-            // Remove previous listener
-            usersRef.off('value');
-            
-            usersRef.on('value', snapshot => {
-                const users = snapshot.val();
+            usersRef.orderByChild('status').equalTo('online').on('value', snapshot => {
                 const container = document.getElementById('onlineUsers');
                 container.innerHTML = '';
-
-                console.log('All users:', users); // Debug
-
-                if (!users) {
-                    container.innerHTML = '<p style="color: #ccc; text-align: center;">No players online</p>';
-                    return;
-                }
-
                 let onlineCount = 0;
-
-                for (let uid in users) {
-                    console.log('Checking user:', uid, users[uid]); // Debug
-                    
-                    if (uid !== currentUser.uid && users[uid].status === 'online') {
-                        onlineCount++;
-                        const userDiv = document.createElement('div');
-                        userDiv.className = 'user-item';
-                        
-                        const userName = users[uid].email ? users[uid].email.split('@')[0] : 'Player';
-                        const userWallet = users[uid].wallet || 0;
-                        
-                        userDiv.innerHTML = `
+                snapshot.forEach(childSnapshot => {
+                    if (childSnapshot.key === currentUser.uid) return;
+                    onlineCount++;
+                    const user = childSnapshot.val();
+                    const userName = user.email.split('@')[0];
+                    container.innerHTML += `
+                        <div class="user-item">
                             <div>
-                                <div style="font-size: 16px; font-weight: bold;">${userName}</div>
-                                <div style="font-size: 12px; color: #4ade80;">🟢 Online</div>
-                                <div style="font-size: 12px; color: #fbbf24;">💰 ${userWallet} coins</div>
+                                <b>${userName}</b>
+                                <div style="font-size: 12px; color: #fbbf24;">💰 ${user.wallet || 0}</div>
                             </div>
-                            <button class="challenge-btn" onclick="challengeUser('${uid}', '${userName}')">Challenge</button>
-                        `;
-                        container.appendChild(userDiv);
-                    }
-                }
-
-                if (onlineCount === 0) {
-                    container.innerHTML = `
-                        <p style="color: #ccc; text-align: center; padding: 20px;">
-                            No hay otros jugadores en línea aún.<br>
-                            <span style="font-size: 12px; color: #999;">
-                                ¡Abre este juego en otro navegador/dispositivo para probar!
-                            </span>
-                        </p>
-                    `;
-                }
-
-                console.log('Online players found:', onlineCount); // Debug
+                            <button class="challenge-btn" onclick="challengeUser('${childSnapshot.key}', '${userName}')">Desafiar</button>
+                        </div>`;
+                });
+                if (onlineCount === 0) container.innerHTML = `<p style="text-align:center; color:#ccc;">No hay otros jugadores en línea.</p>`;
             });
         }
 
         async function challengeUser(opponentId, opponentName) {
             sounds.click();
-            
-            console.log('Challenging user:', opponentId); // Debug
-            
-            // Create game room
             const gameRef = database.ref('games').push();
             currentGameId = gameRef.key;
-
             await gameRef.set({
-                player1: currentUser.uid,
-                player2: opponentId,
-                status: 'pending',
-                createdAt: Date.now()
+                player1: { uid: currentUser.uid, email: currentUser.email },
+                player2: { uid: opponentId }, status: 'pending'
             });
-
-            // Send challenge to opponent
-            await database.ref('users/' + opponentId + '/challenge').set({
-                from: currentUser.uid,
-                gameId: currentGameId,
-                fromEmail: currentUser.email
+            await database.ref(`users/${opponentId}/challenge`).set({
+                from: currentUser.uid, gameId: currentGameId, fromEmail: currentUser.email
             });
-
-            document.getElementById('gameStatus').textContent = `¡Desafío enviado a ${opponentName}! Esperando respuesta...`;
             showScreen('gameScreen');
-            document.getElementById('betContainer').style.display = 'none';
-            document.getElementById('controls').style.display = 'none';
-
-            // Listen for challenge response with timeout
-            const gameListener = gameRef.on('value', snapshot => {
-                const game = snapshot.val();
-                if (game && game.status === 'accepted') {
-                    gameRef.off('value', gameListener);
-                    startGame();
-                } else if (game && game.status === 'declined') {
-                    gameRef.off('value', gameListener);
-                    alert('Desafío rechazado');
-                    exitGame();
-                } else if (!game) {
-                    gameRef.off('value', gameListener);
-                    alert('Desafío cancelado');
-                    exitGame();
-                }
-            });
-
-            // Timeout after 30 seconds
-            setTimeout(() => {
-                gameRef.once('value', snapshot => {
-                    const game = snapshot.val();
-                    if (game && game.status === 'pending') {
-                        gameRef.remove();
-                        alert('Tiempo de espera agotado - sin respuesta');
-                        exitGame();
-                    }
-                });
-            }, 30000);
+            document.getElementById('gameStatus').textContent = `Esperando a ${opponentName}...`;
+            
+            gameRef.on('value', gameListener);
         }
 
+        const gameListener = snapshot => {
+            const game = snapshot.val();
+            if (!game) {
+                database.ref(`games/${currentGameId}`).off('value', gameListener);
+                alert('El desafío fue cancelado.');
+                exitGame();
+                return;
+            }
+            if (game.status === 'accepted') {
+                database.ref(`games/${currentGameId}`).off('value', gameListener);
+                startGame(game);
+            } else if (game.status === 'declined') {
+                database.ref(`games/${currentGameId}`).off('value', gameListener);
+                alert('Desafío rechazado.');
+                exitGame();
+            }
+        };
+
         function showChallengeModal(challenge) {
-            database.ref('users/' + challenge.from).once('value', snapshot => {
-                const challenger = snapshot.val();
-                document.getElementById('challengeText').textContent = 
-                    `¡${challenger.email.split('@')[0]} quiere jugar contigo!`;
-                document.getElementById('challengeModal').style.display = 'flex';
-            });
+            document.getElementById('challengeText').textContent = `${challenge.fromEmail.split('@')[0]} te está desafiando.`;
+            document.getElementById('challengeModal').style.display = 'flex';
         }
 
         async function acceptChallenge() {
-            sounds.click();
             document.getElementById('challengeModal').style.display = 'none';
-            
+            if (!pendingChallenge) return;
             currentGameId = pendingChallenge.gameId;
-            await database.ref('games/' + currentGameId).update({ status: 'accepted' });
-            await database.ref('users/' + currentUser.uid + '/challenge').remove();
-            
+            await database.ref(`games/${currentGameId}`).update({ status: 'accepted', 'player2/email': currentUser.email });
+            await database.ref(`users/${currentUser.uid}/challenge`).remove();
             showScreen('gameScreen');
-            startGame();
         }
 
         async function declineChallenge() {
-            sounds.click();
             document.getElementById('challengeModal').style.display = 'none';
-            
-            await database.ref('games/' + pendingChallenge.gameId).update({ status: 'declined' });
-            await database.ref('users/' + currentUser.uid + '/challenge').remove();
-            
+            if (!pendingChallenge) return;
+            await database.ref(`games/${pendingChallenge.gameId}`).update({ status: 'declined' });
+            await database.ref(`users/${currentUser.uid}/challenge`).remove();
             pendingChallenge = null;
         }
 
         // ============================================
-        // GAME FUNCTIONS
+        // GAME LOGIC
         // ============================================
-        async function startGame() {
-            document.getElementById('gameStatus').textContent = 'Configurando video...';
+        async function startGame(game) {
+            document.getElementById('resultDisplay').innerHTML = '';
             document.getElementById('betContainer').style.display = 'block';
+            document.getElementById('controls').style.display = 'none';
             
-            // Initialize WebRTC FIRST
+            const opponent = game.player1.uid === currentUser.uid ? game.player2 : game.player1;
+            const opponentData = (await database.ref(`users/${opponent.uid}`).once('value')).val();
+            document.getElementById('remotePlayerLabel').textContent = opponentData.email.split('@')[0];
+            document.getElementById('remotePlayerBalance').textContent = '💰 ' + (opponentData.wallet || 0);
+            
             await setupWebRTC();
-
-            // Load opponent info
-            const gameRef = database.ref('games/' + currentGameId);
-            const gameSnapshot = await gameRef.once('value');
-            const game = gameSnapshot.val();
-            
-            const opponentId = game.player1 === currentUser.uid ? game.player2 : game.player1;
-            const opponentSnapshot = await database.ref('users/' + opponentId).once('value');
-            const opponent = opponentSnapshot.val();
-            
-            document.getElementById('remotePlayerLabel').textContent = opponent.email.split('@')[0];
-            document.getElementById('remotePlayerBalance').textContent = '💰 ' + (opponent.wallet || 0);
-            
-            document.getElementById('gameStatus').textContent = '¡Establece tu apuesta y confirma!';
+            document.getElementById('gameStatus').textContent = '¡Confirma tu apuesta!';
         }
 
         async function confirmBet() {
             const betAmount = parseInt(document.getElementById('betAmount').value);
-            
-            if (betAmount < 5) {
-                alert('¡La apuesta mínima es de 5 monedas!');
-                return;
-            }
+            const balance = parseInt(document.getElementById('userBalance').textContent);
 
-            // Check balance
-            const balanceSnapshot = await database.ref('users/' + currentUser.uid + '/wallet').once('value');
-            const balance = balanceSnapshot.val() || 0;
-            
-            if (balance < betAmount) {
-                alert('¡Saldo insuficiente!');
-                return;
+            if (betAmount < 5 || balance < betAmount) {
+                return alert('Apuesta inválida o saldo insuficiente.');
             }
-
             sounds.click();
-            
-            const gameRef = database.ref('games/' + currentGameId);
-            const gameSnapshot = await gameRef.once('value');
-            const game = gameSnapshot.val();
-            const isPlayer1 = game.player1 === currentUser.uid;
-            
-            if (isPlayer1) {
-                await gameRef.update({ bet1: betAmount, bet1Ready: true });
-            } else {
-                await gameRef.update({ bet2: betAmount, bet2Ready: true });
-            }
 
+            const gameRef = database.ref(`games/${currentGameId}`);
+            const game = (await gameRef.once('value')).val();
+            const playerKey = game.player1.uid === currentUser.uid ? 'player1' : 'player2';
+            
+            await gameRef.child(playerKey).update({ bet: betAmount, ready: true });
             document.getElementById('betContainer').style.display = 'none';
-            document.getElementById('gameStatus').textContent = 'Esperando que el oponente confirme la apuesta...';
+            document.getElementById('gameStatus').textContent = 'Esperando al oponente...';
 
-            // Listen for both players ready - ONE TIME ONLY
-            const checkBothReady = (snapshot) => {
-                const game = snapshot.val();
-                if (game && game.bet1Ready && game.bet2Ready && game.status === 'accepted') {
-                    gameRef.off('value', checkBothReady); // Stop listening
-                    startCountdown();
-                }
-            };
-            
-            gameRef.on('value', checkBothReady);
+            gameRef.on('value', checkBothReadyListener);
         }
+
+        const checkBothReadyListener = snapshot => {
+            const game = snapshot.val();
+            if (game && game.player1.ready && game.player2.ready) {
+                database.ref(`games/${currentGameId}`).off('value', checkBothReadyListener);
+                startCountdown();
+            }
+        };
 
         async function startCountdown() {
-            const gameRef = database.ref('games/' + currentGameId);
-            await gameRef.update({ status: 'countdown' });
+            document.getElementById('gameStatus').innerHTML = `<div class="countdown">3</div>`;
+            await sleep(1000);
+            document.getElementById('gameStatus').innerHTML = `<div class="countdown">2</div>`;
+            await sleep(1000);
+            document.getElementById('gameStatus').innerHTML = `<div class="countdown">1</div>`;
+            await sleep(1000);
             
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('resultDisplay').innerHTML = '';
-            
-            for (let i = 3; i > 0; i--) {
-                document.getElementById('gameStatus').innerHTML = `<div class="countdown">${i}</div>`;
-                if (i === 1) {
-                    sounds.alarm();
-                } else {
-                    sounds.countdown();
-                }
-                await sleep(1000);
-            }
-
-            document.getElementById('gameStatus').textContent = '¡Elige tu jugada AHORA!';
+            document.getElementById('gameStatus').textContent = '¡ELIGE!';
             document.getElementById('controls').style.display = 'flex';
-            
-            await gameRef.update({ 
-                status: 'playing',
-                choice1: null,
-                choice2: null 
-            });
+            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
 
-            // Listen for both choices - ONE TIME ONLY
-            const checkBothChoices = async (snapshot) => {
-                const game = snapshot.val();
-                if (game && game.choice1 && game.choice2 && game.status === 'playing') {
-                    gameRef.off('value', checkBothChoices); // Stop listening
-                    await determineWinner(game);
-                }
-            };
-            
-            gameRef.on('value', checkBothChoices);
+            await database.ref(`games/${currentGameId}`).update({ 'player1/choice': null, 'player2/choice': null, status: 'playing' });
+            database.ref(`games/${currentGameId}`).on('value', checkBothChoicesListener);
         }
+
+        const checkBothChoicesListener = async snapshot => {
+            const game = snapshot.val();
+            if (game && game.player1.choice && game.player2.choice) {
+                database.ref(`games/${currentGameId}`).off('value', checkBothChoicesListener);
+                await determineWinner(game);
+            }
+        };
 
         async function makeChoice(choice) {
             sounds.click();
+            document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById(`${choice}Btn`).classList.add('selected');
             
-            const gameRef = database.ref('games/' + currentGameId);
-            const gameSnapshot = await gameRef.once('value');
-            const game = gameSnapshot.val();
-            
-            if (game.status !== 'playing') {
-                return; // Ignore if not in playing state
-            }
-            
-            // Highlight selected button
-            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-            document.getElementById(choice + 'Btn').classList.add('selected');
-
-            const isPlayer1 = game.player1 === currentUser.uid;
-            
-            if (isPlayer1) {
-                await gameRef.update({ choice1: choice });
-            } else {
-                await gameRef.update({ choice2: choice });
-            }
+            const playerKey = (await database.ref(`games/${currentGameId}/player1/uid`).once('value')).val() === currentUser.uid ? 'player1' : 'player2';
+            await database.ref(`games/${currentGameId}/${playerKey}`).update({ choice: choice });
 
             document.getElementById('controls').style.display = 'none';
             document.getElementById('gameStatus').textContent = 'Esperando al oponente...';
         }
 
         async function determineWinner(game) {
-            const gameRef = database.ref('games/' + currentGameId);
-            await gameRef.update({ status: 'finished' });
-            
-            // Stop all listeners
-            gameRef.off('value');
-            
-            const choice1 = game.choice1;
-            const choice2 = game.choice2;
-            const isPlayer1 = game.player1 === currentUser.uid;
-            
-            let result = '';
-            let winner = null;
+            const { player1, player2 } = game;
+            const choice1 = player1.choice;
+            const choice2 = player2.choice;
+            let winnerId = null;
 
-            // Determine winner
-            if (choice1 === choice2) {
-                result = 'draw';
-            } else if (
-                (choice1 === 'rock' && choice2 === 'scissors') ||
-                (choice1 === 'scissors' && choice2 === 'paper') ||
-                (choice1 === 'paper' && choice2 === 'rock')
-            ) {
-                winner = 'player1';
-            } else {
-                winner = 'player2';
-            }
-
-            // Show choices
-            const icons = { rock: '🪨', paper: '📄', scissors: '✂️' };
-            document.getElementById('gameStatus').innerHTML = `
-                <div style="display: flex; justify-content: space-around; font-size: 48px; margin: 20px 0;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 14px; color: #0ff;">You</div>
-                        <div>${icons[isPlayer1 ? choice1 : choice2]}</div>
-                    </div>
-                    <div style="font-size: 36px; color: #fff;">VS</div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 14px; color: #f0f;">Opponent</div>
-                        <div>${icons[isPlayer1 ? choice2 : choice1]}</div>
-                    </div>
-                </div>
-            `;
-
-            await sleep(2000);
-
-            // Update wallets
-            const bet1 = game.bet1 || 5;
-            const bet2 = game.bet2 || 5;
-            const totalPot = bet1 + bet2;
-
-            if (result === 'draw') {
-                showResult('draw', '🤝 ¡Es un Empate! Monedas reembolsadas');
-                sounds.draw();
-            } else {
-                const winnerId = winner === 'player1' ? game.player1 : game.player2;
-                const loserId = winner === 'player1' ? game.player2 : game.player1;
-                
-                // Deduct from loser
-                await database.ref('users/' + loserId + '/wallet').transaction(current => {
-                    const loserBet = loserId === game.player1 ? bet1 : bet2;
-                    return Math.max(0, (current || 0) - loserBet);
-                });
-                
-                // Add to winner
-                await database.ref('users/' + winnerId + '/wallet').transaction(current => {
-                    return (current || 0) + totalPot;
-                });
-
-                if (winnerId === currentUser.uid) {
-                    showResult('win', `🎉 ¡Ganaste! +${totalPot} monedas`);
-                    sounds.win();
+            if (choice1 !== choice2) {
+                if ((choice1 === 'rock' && choice2 === 'scissors') || (choice1 === 'scissors' && choice2 === 'paper') || (choice1 === 'paper' && choice2 === 'rock')) {
+                    winnerId = player1.uid;
                 } else {
-                    const loserBet = currentUser.uid === game.player1 ? bet1 : bet2;
-                    showResult('lose', `💔 ¡Perdiste! -${loserBet} monedas`);
-                    sounds.lose();
+                    winnerId = player2.uid;
                 }
             }
 
-            // Show play again option
+            // MEJORA 1: Lógica de monedas corregida y centralizada
+            if (winnerId) {
+                const loserId = winnerId === player1.uid ? player2.uid : player1.uid;
+                const betAmount = winnerId === player1.uid ? player2.bet : player1.bet;
+                await updateWallets(winnerId, loserId, betAmount);
+            }
+
+            const resultType = !winnerId ? 'draw' : (winnerId === currentUser.uid ? 'win' : 'lose');
+            const resultText = {
+                draw: '🤝 ¡Empate!',
+                win: `🎉 ¡Ganaste! +${winnerId === player1.uid ? player2.bet : player1.bet} monedas`,
+                lose: `💔 ¡Perdiste! -${winnerId === player1.uid ? player1.bet : player2.bet} monedas`
+            }[resultType];
+            
+            sounds[resultType]();
+            showResult(resultType, resultText);
+            
             setTimeout(() => {
-                const resultDiv = document.getElementById('resultDisplay');
-                const buttons = document.createElement('div');
-                buttons.style.marginTop = '20px';
-                buttons.innerHTML = `
-                    <button onclick="playAgain()" class="action-btn">Jugar de Nuevo</button>
-                    <button onclick="exitGame()" class="action-btn secondary">Salir al Lobby</button>
-                `;
-                resultDiv.appendChild(buttons);
-            }, 2000);
+                document.getElementById('resultDisplay').innerHTML += `
+                    <div style="margin-top:20px;">
+                        <button onclick="playAgain()" class="action-btn">Revancha</button>
+                        <button onclick="exitGame()" class="action-btn secondary">Salir</button>
+                    </div>`;
+            }, 1500);
+        }
+        
+        async function updateWallets(winnerId, loserId, betAmount) {
+            const winnerRef = database.ref(`users/${winnerId}/wallet`);
+            const loserRef = database.ref(`users/${loserId}/wallet`);
+            await winnerRef.transaction(balance => (balance || 0) + betAmount);
+            await loserRef.transaction(balance => (balance || 0) - betAmount);
         }
 
         function showResult(type, message) {
@@ -1147,71 +922,44 @@
 
         async function playAgain() {
             sounds.click();
+            // MEJORA 2: Lógica de revancha corregida
+            const gameRef = database.ref(`games/${currentGameId}`);
+            const playerKey = (await gameRef.child('player1/uid').once('value')).val() === currentUser.uid ? 'player1' : 'player2';
             
-            const gameRef = database.ref('games/' + currentGameId);
-            const gameSnapshot = await gameRef.once('value');
-            const game = gameSnapshot.val();
-            
-            if (!game) {
-                exitGame();
-                return;
-            }
-            
-            // Reset game state completely
-            await gameRef.update({
-                status: 'accepted',
-                bet1: null,
-                bet2: null,
-                bet1Ready: false,
-                bet2Ready: false,
-                choice1: null,
-                choice2: null
-            });
-            
-            // Reset UI
-            document.getElementById('resultDisplay').innerHTML = '';
-            document.getElementById('gameStatus').textContent = '¡Establece tu apuesta y confirma!';
-            document.getElementById('betContainer').style.display = 'block';
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('betAmount').value = '5';
-            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
+            // Indicar que estoy listo para la revancha
+            await gameRef.child(`${playerKey}/rematch`).set(true);
+
+            document.getElementById('resultDisplay').innerHTML = `<h2>Esperando al oponente para la revancha...</h2>`;
+
+            // Escuchar si ambos están listos para la revancha
+            gameRef.on('value', rematchListener);
         }
+        
+        const rematchListener = async (snapshot) => {
+            const game = snapshot.val();
+            if (game && game.player1.rematch && game.player2.rematch) {
+                database.ref(`games/${currentGameId}`).off('value', rematchListener);
+                // Ambos listos, reiniciar el juego
+                await database.ref(`games/${currentGameId}`).update({
+                    status: 'accepted',
+                    'player1/bet': null, 'player1/ready': null, 'player1/choice': null, 'player1/rematch': null,
+                    'player2/bet': null, 'player2/ready': null, 'player2/choice': null, 'player2/rematch': null
+                });
+                startGame(game); // Re-iniciar el flujo del juego
+            }
+        };
 
         function exitGame() {
             sounds.click();
-            
-            // Stop all listeners
             if (currentGameId) {
-                const gameRef = database.ref('games/' + currentGameId);
-                gameRef.off('value');
-                gameRef.remove();
+                database.ref(`games/${currentGameId}`).off();
+                database.ref(`games/${currentGameId}`).remove();
             }
-            
-            // Stop video streams
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-            
-            // Close peer connection
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            
-            // Clear video elements
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            if (peerConnection) peerConnection.close();
+            localStream = peerConnection = currentGameId = null;
             document.getElementById('localVideo').srcObject = null;
             document.getElementById('remoteVideo').srcObject = null;
-            
-            // Reset variables
-            currentGameId = null;
-            
-            // Reset UI
-            document.getElementById('resultDisplay').innerHTML = '';
-            document.getElementById('gameStatus').textContent = '';
-            document.getElementById('betContainer').style.display = 'none';
-            document.getElementById('controls').style.display = 'none';
-            
             showScreen('lobbyScreen');
         }
 
@@ -1220,214 +968,72 @@
         // ============================================
         async function setupWebRTC() {
             try {
-                console.log('🎥 Iniciando configuración de WebRTC...');
+                const constraints = { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: { echoCancellation: true, noiseSuppression: true } };
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                document.getElementById('localVideo').srcObject = localStream;
                 
-                // Get local video stream with better constraints
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        facingMode: 'user'
-                    },
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }
-                });
-                
-                console.log('✅ Stream local obtenido:', localStream);
-                console.log('📹 Tracks de video:', localStream.getVideoTracks());
-                console.log('🎤 Tracks de audio:', localStream.getAudioTracks());
-                
-                // Set local video
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = localStream;
-                localVideo.muted = true; // Mute local to avoid echo
-                
-                // Force play
-                localVideo.play().then(() => {
-                    console.log('✅ Video local reproduciendo');
-                }).catch(err => {
-                    console.error('❌ Error al reproducir video local:', err);
-                });
-
-                // Create peer connection
                 peerConnection = new RTCPeerConnection(rtcConfig);
-                console.log('✅ Conexión peer creada');
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-                // Add local stream to peer connection
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                    console.log('✅ Track añadido:', track.kind, track.label);
-                });
-
-                // Handle incoming stream
                 peerConnection.ontrack = event => {
-                    console.log('✅ Track remoto recibido:', event.track.kind);
-                    console.log('✅ Stream remoto:', event.streams[0]);
-                    
                     const remoteVideo = document.getElementById('remoteVideo');
-                    if (remoteVideo.srcObject !== event.streams[0]) {
-                        remoteVideo.srcObject = event.streams[0];
-                        remoteVideo.play().then(() => {
-                            console.log('✅ Video remoto reproduciendo');
-                        }).catch(err => {
-                            console.error('❌ Error al reproducir video remoto:', err);
-                        });
-                    }
+                    const remoteMuteIcon = document.getElementById('remoteMuteIcon');
+                    remoteVideo.srcObject = event.streams[0];
+                    remoteVideo.play().catch(() => {
+                        remoteVideo.muted = true;
+                        remoteMuteIcon.style.display = 'block';
+                        remoteVideo.play();
+                        remoteVideo.addEventListener('click', () => {
+                            remoteVideo.muted = false;
+                            remoteMuteIcon.style.display = 'none';
+                        }, { once: true });
+                    });
                 };
+                
+                const gameRef = database.ref(`games/${currentGameId}`);
+                const game = (await gameRef.once('value')).val();
+                const isPlayer1 = game.player1.uid === currentUser.uid;
+                const selfKey = isPlayer1 ? 'player1' : 'player2';
+                const opponentKey = isPlayer1 ? 'player2' : 'player1';
 
-                // Connection state monitoring
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log('🔗 Estado de conexión ICE:', peerConnection.iceConnectionState);
-                    if (peerConnection.iceConnectionState === 'connected') {
-                        document.getElementById('gameStatus').textContent = '🎥 ¡Conexión de video establecida!';
-                    }
+                peerConnection.onicecandidate = e => {
+                    if (e.candidate) gameRef.child(`${selfKey}/ice`).push(e.candidate.toJSON());
                 };
-
-                peerConnection.onconnectionstatechange = () => {
-                    console.log('🔗 Estado de conexión:', peerConnection.connectionState);
-                };
-
-                // Handle ICE candidates
-                peerConnection.onicecandidate = event => {
-                    if (event.candidate) {
-                        console.log('📡 Enviando candidato ICE');
-                        database.ref('games/' + currentGameId + '/iceCandidates/' + currentUser.uid).push({
-                            candidate: event.candidate.toJSON()
-                        });
-                    }
-                };
-
-                // Determine if we should create offer
-                const gameSnapshot = await database.ref('games/' + currentGameId).once('value');
-                const game = gameSnapshot.val();
-                const isPlayer1 = game.player1 === currentUser.uid;
+                gameRef.child(`${opponentKey}/ice`).on('child_added', s => peerConnection.addIceCandidate(new RTCIceCandidate(s.val())));
 
                 if (isPlayer1) {
-                    console.log('👤 Jugador 1: Creando oferta...');
-                    
-                    // Player 1 creates offer
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
-                    await database.ref('games/' + currentGameId + '/offer').set({
-                        sdp: offer.sdp,
-                        type: offer.type
+                    await gameRef.update({ offer: { sdp: offer.sdp, type: offer.type }});
+                    gameRef.child('answer').on('value', s => {
+                        if (s.exists() && !peerConnection.currentRemoteDescription) peerConnection.setRemoteDescription(new RTCSessionDescription(s.val()));
                     });
-                    console.log('✅ Oferta creada y enviada');
-
-                    // Listen for answer
-                    database.ref('games/' + currentGameId + '/answer').on('value', async snapshot => {
-                        const answer = snapshot.val();
-                        if (answer && !peerConnection.currentRemoteDescription) {
-                            console.log('✅ Respuesta recibida, estableciendo descripción remota');
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                        }
-                    });
-
-                    // Listen for remote ICE candidates
-                    database.ref('games/' + currentGameId + '/iceCandidates/' + game.player2).on('child_added', async snapshot => {
-                        const data = snapshot.val();
-                        if (data && data.candidate) {
-                            console.log('📡 Añadiendo candidato ICE remoto');
-                            try {
-                                const candidate = new RTCIceCandidate(data.candidate);
-                                await peerConnection.addIceCandidate(candidate);
-                            } catch (err) {
-                                console.error('❌ Error añadiendo candidato ICE:', err);
-                            }
-                        }
-                    });
-
                 } else {
-                    console.log('👤 Jugador 2: Esperando oferta...');
-                    
-                    // Player 2 creates answer
-                    database.ref('games/' + currentGameId + '/offer').on('value', async snapshot => {
-                        const offer = snapshot.val();
-                        if (offer && !peerConnection.currentRemoteDescription) {
-                            console.log('✅ Oferta recibida, creando respuesta');
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                    gameRef.child('offer').on('value', async s => {
+                        if (s.exists() && !peerConnection.currentRemoteDescription) {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(s.val()));
                             const answer = await peerConnection.createAnswer();
                             await peerConnection.setLocalDescription(answer);
-                            await database.ref('games/' + currentGameId + '/answer').set({
-                                sdp: answer.sdp,
-                                type: answer.type
-                            });
-                            console.log('✅ Respuesta creada y enviada');
-                        }
-                    });
-
-                    // Listen for remote ICE candidates
-                    database.ref('games/' + currentGameId + '/iceCandidates/' + game.player1).on('child_added', async snapshot => {
-                        const data = snapshot.val();
-                        if (data && data.candidate) {
-                            console.log('📡 Añadiendo candidato ICE remoto');
-                            try {
-                                const candidate = new RTCIceCandidate(data.candidate);
-                                await peerConnection.addIceCandidate(candidate);
-                            } catch (err) {
-                                console.error('❌ Error añadiendo candidato ICE:', err);
-                            }
+                            await gameRef.update({ answer: { sdp: answer.sdp, type: answer.type }});
                         }
                     });
                 }
-
             } catch (error) {
-                console.error('❌ Error de configuración WebRTC:', error);
-                alert('No se pudo acceder a la cámara/micrófono: ' + error.message + '\nPor favor, concede los permisos e intenta de nuevo.');
+                alert('Error de Cámara/Micrófono: ' + error.message);
                 exitGame();
             }
         }
 
         // ============================================
-        // UTILITY FUNCTIONS
+        // UTILITY & INITIALIZATION
         // ============================================
         function showScreen(screenId) {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('lobbyScreen').style.display = 'none';
-            document.getElementById('gameScreen').style.display = 'none';
-            document.getElementById(screenId).style.display = 'block';
+            ['loginScreen', 'lobbyScreen', 'gameScreen'].forEach(id => {
+                document.getElementById(id).style.display = id === screenId ? 'block' : 'none';
+            });
         }
-
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        // ============================================
-        // INITIALIZATION
-        // ============================================
-        window.addEventListener('beforeunload', () => {
-            if (currentUser) {
-                database.ref('users/' + currentUser.uid + '/status').set('offline');
-            }
-        });
-
-        // Add ambient background sound (optional)
-        function startAmbientSound() {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator.frequency.value = 60;
-            oscillator.type = 'sine';
-            gainNode.gain.value = 0.02;
-            
-            oscillator.start();
-            
-            // Stop after 30 seconds to save resources
-            setTimeout(() => oscillator.stop(), 30000);
-        }
-
-        // Start ambient sound on first user interaction
-        document.addEventListener('click', function initAudio() {
-            startAmbientSound();
-            document.removeEventListener('click', initAudio);
-        }, { once: true });
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+        document.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }, { once: true });
 
     </script>
 </body>
