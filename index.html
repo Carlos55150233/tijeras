@@ -1,111 +1,95 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Piedra Papel Tijeras</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      background: radial-gradient(circle at top, #1b1b1b, #0d0d0d);
-      font-family: 'Segoe UI', sans-serif;
-      color: white;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
-
-    .machine {
-      margin: 60px auto;
-      width: 340px;
-      background: linear-gradient(145deg, #5e5e5e, #2e2e2e);
-      border: 3px solid #888;
-      border-radius: 18px;
-      box-shadow: inset 0 0 10px #111, 0 0 20px #000;
-      padding: 20px;
-    }
-
-    .screen {
-      background: #000;
-      border: 3px solid #555;
-      border-radius: 12px;
-      height: 180px;
-      color: #0f0;
-      padding: 10px;
-      margin-bottom: 20px;
-      font-size: 16px;
-      overflow-y: auto;
-    }
-
-    .btn {
-      background: #444;
-      color: white;
-      border: 2px solid #666;
-      border-radius: 50%;
-      width: 80px;
-      height: 80px;
-      margin: 10px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    .btn:hover { background: #777; }
-
-    #googleLogin {
-      background: #4285F4;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-      margin-top: 15px;
-    }
-    #coinsDisplay {
-      margin-top: 10px;
-      font-weight: bold;
-      color: #ffb700;
-    }
-
-    #videoContainer {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    video {
-      width: 120px;
-      height: 90px;
-      background: #111;
-      border: 2px solid #444;
-      border-radius: 8px;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Piedra Papel Tijeras - Wallet Ready</title>
+<style>
+  :root{--bg:#0b0b0d;--panel:#14171a;--accent:#00d4ff;--muted:#9fb4c8}
+  *{box-sizing:border-box;font-family:Inter,system-ui,Arial}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#060708,var(--bg));color:#e7f6ff;display:flex;align-items:center;justify-content:center;padding:20px}
+  .app{width:360px;max-width:96vw;background:linear-gradient(180deg,#1b1f23,#0f1113);border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,.03);box-shadow:0 10px 30px rgba(0,0,0,.6)}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .user{font-size:13px}
+  .balance{font-weight:700;color:#bff0c6}
+  .small{font-size:12px;color:var(--muted)}
+  .screen{background:linear-gradient(180deg,#02060a,#071014);border-radius:10px;padding:8px;margin-bottom:12px;height:170px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.02)}
+  .centerText{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-weight:700;font-size:20px;color:#dff9ff}
+  .controls{display:flex;gap:8px;justify-content:space-between;margin-bottom:8px}
+  .btn{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg,#222528,#111214);border:1px solid rgba(255,255,255,.03);text-align:center;cursor:pointer}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.04);padding:6px 8px;border-radius:8px;color:#cbe9ff;cursor:pointer}
+  .walletPanel{margin-top:8px;padding:8px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);font-size:13px}
+  .walletRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:transparent;color:#e7f6ff}
+  .history{max-height:120px;overflow:auto;margin-top:8px;font-size:12px;padding:6px;background:rgba(255,255,255,0.01);border-radius:8px}
+  video{width:48%;height:88px;background:#000;border-radius:8px;object-fit:cover}
+  .videos{display:flex;gap:4px;margin-top:8px;justify-content:center}
+</style>
 </head>
 <body>
-  <h2>🎮 Piedra Papel Tijeras</h2>
-  <div class="machine">
-    <div class="screen" id="gameLog">Inicia sesión para jugar...</div>
-
-    <div>
-      <button class="btn" id="piedra">🪨 Piedra</button>
-      <button class="btn" id="papel">📄 Papel</button>
-      <button class="btn" id="tijeras">✂️ Tijeras</button>
+  <div class="app" role="main" aria-label="Piedra Papel Tijeras Wallet">
+    <div class="top">
+      <div>
+        <div id="displayName" class="user">No signed</div>
+        <div id="subInfo" class="small">Inicia sesión para cargar tu wallet</div>
+      </div>
+      <div style="text-align:right">
+        <div id="balance" class="balance">-- coins</div>
+        <div style="margin-top:6px"><button id="signBtn" class="btn-ghost">Sign in (Google)</button><button id="signOutBtn" class="btn-ghost" style="display:none">Sign out</button></div>
+      </div>
     </div>
 
-    <button id="googleLogin">🔐 Iniciar sesión con Google</button>
-    <p id="coinsDisplay">💰 Coins: --</p>
+    <div class="screen">
+      <div class="small" id="status">Status: idle</div>
+      <div class="centerText" id="centerText">Waiting</div>
 
-    <div id="videoContainer">
-      <video id="localVideo" autoplay muted></video>
-      <video id="remoteVideo" autoplay></video>
+      <div class="videos" style="position:absolute;bottom:8px;left:8px;right:8px">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="btn" id="btnRock" data-move="rock">🪨 Piedra</div>
+      <div class="btn" id="btnPaper" data-move="paper">📄 Papel</div>
+      <div class="btn" id="btnScissors" data-move="scissors">✂️ Tijera</div>
+    </div>
+
+    <!-- WALLET PANEL -->
+    <div class="walletPanel" aria-live="polite">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>Wallet</strong>
+        <small id="walletId" class="small"></small>
+      </div>
+      <div class="walletRow">
+        <div class="small">Saldo disponible</div>
+        <div id="walletBalance" class="balance">--</div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input id="depositAmount" type="number" min="1" value="50" />
+        <button id="depositBtn" class="btn-ghost">Depositar (test)</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input id="betAmount" type="number" min="5" value="5" />
+        <button id="playLocalBtn" class="btn-ghost">Jugar local (vs CPU)</button>
+      </div>
+
+      <div class="small" style="margin-top:6px">Historial (últimas 20 transacciones)</div>
+      <div id="history" class="history"></div>
     </div>
   </div>
 
+  <!-- Firebase modular SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getDatabase, ref, set, get, child, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getDatabase, ref, child, get, set, onValue, runTransaction, push, serverTimestamp, query, limitToLast, off
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
+    /* ========== CONFIG ================== */
     const firebaseConfig = {
       apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
       authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
@@ -113,116 +97,272 @@
       projectId: "piedra-papel-o-tijeras-5ae53",
       storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
       messagingSenderId: "394850327081",
-      appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38"
+      appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
+      measurementId: "G-C3VE5H0Y3S"
     };
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    const btnLogin = document.getElementById('googleLogin');
-    const balanceDisplay = document.getElementById('coinsDisplay');
-    const log = document.getElementById('gameLog');
+    /* ========== UI ELEMENTS =========== */
+    const signBtn = document.getElementById('signBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
+    const displayNameEl = document.getElementById('displayName');
+    const subInfoEl = document.getElementById('subInfo');
+    const balanceEl = document.getElementById('balance');
+    const walletBalanceEl = document.getElementById('walletBalance');
+    const walletIdEl = document.getElementById('walletId');
+    const historyEl = document.getElementById('history');
+    const depositBtn = document.getElementById('depositBtn');
+    const depositAmountInput = document.getElementById('depositAmount');
+    const betAmountInput = document.getElementById('betAmount');
+    const playLocalBtn = document.getElementById('playLocalBtn');
+    const centerText = document.getElementById('centerText');
+    const statusEl = document.getElementById('status');
 
-    const btns = {
-      piedra: document.getElementById('piedra'),
-      papel: document.getElementById('papel'),
-      tijeras: document.getElementById('tijeras')
-    };
+    const btnRock = document.getElementById('btnRock');
+    const btnPaper = document.getElementById('btnPaper');
+    const btnScissors = document.getElementById('btnScissors');
 
-    let currentUser = null;
-    let gameChoice = null;
+    /* ========== STATE ================ */
+    let me = null; // current firebase user
+    let walletListenerUnsub = null;
+    let txsListenerUnsub = null;
 
-    // Iniciar sesión
-    btnLogin.onclick = async () => {
+    /* ========== AUTH UI ============== */
+    signBtn.onclick = async () => {
       try {
-        const result = await signInWithPopup(auth, provider);
-        currentUser = result.user;
-        await checkOrCreateWallet(currentUser);
-        logMessage(`Bienvenido ${currentUser.displayName}`);
-      } catch (e) {
-        alert("Error: " + e.message);
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        alert('Auth failed: ' + (err.message || err));
+        console.error(err);
       }
     };
+    signOutBtn.onclick = async () => {
+      try {
+        await signOut(auth);
+      } catch (err) { console.error(err); }
+    };
 
-    // Crear monedero si no existe
-    async function checkOrCreateWallet(user) {
-      const dbRef = ref(db);
-      const snapshot = await get(child(dbRef, `wallets/${user.uid}`));
-      if (!snapshot.exists()) {
-        await set(ref(db, `wallets/${user.uid}`), {
-          coins: 100,
-          email: user.email,
-          name: user.displayName
-        });
-      }
-      const userWallet = (await get(child(dbRef, `wallets/${user.uid}`))).val();
-      balanceDisplay.innerText = `💰 Coins: ${userWallet.coins}`;
-    }
-
-    // Actualizar saldo
-    async function updateCoins(userId, amount) {
-      const userRef = ref(db, `wallets/${userId}/coins`);
-      const snapshot = await get(userRef);
-      if (snapshot.exists()) {
-        const current = snapshot.val();
-        await update(ref(db, `wallets/${userId}`), { coins: current + amount });
-        balanceDisplay.innerText = `💰 Coins: ${current + amount}`;
-      }
-    }
-
-    // Lógica de juego simple (modo local)
-    Object.keys(btns).forEach(choice => {
-      btns[choice].onclick = async () => {
-        if (!currentUser) return alert("Inicia sesión primero.");
-        gameChoice = choice;
-        const opciones = ["piedra", "papel", "tijeras"];
-        const rival = opciones[Math.floor(Math.random() * 3)];
-        const resultado = getResult(choice, rival);
-        logMessage(`Tú: ${choice.toUpperCase()} vs Rival: ${rival.toUpperCase()} → ${resultado}`);
-        if (resultado === "GANASTE") await updateCoins(currentUser.uid, +5);
-        if (resultado === "PERDISTE") await updateCoins(currentUser.uid, -5);
-      };
-    });
-
-    function getResult(a, b) {
-      if (a === b) return "EMPATE";
-      if (
-        (a === "piedra" && b === "tijeras") ||
-        (a === "papel" && b === "piedra") ||
-        (a === "tijeras" && b === "papel")
-      ) return "GANASTE";
-      return "PERDISTE";
-    }
-
-    function logMessage(msg) {
-      log.innerHTML += `<div>${msg}</div>`;
-      log.scrollTop = log.scrollHeight;
-    }
-
-    // Mantener sesión
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        currentUser = user;
-        await checkOrCreateWallet(user);
+        me = user;
+        displayNameEl.textContent = user.displayName || user.email || user.uid;
+        signBtn.style.display = 'none';
+        signOutBtn.style.display = 'inline-block';
+        subInfoEl.textContent = 'Cargando wallet...';
+        walletIdEl.textContent = user.uid.slice(0,6);
+        // Ensure wallet exists (atomic)
+        await ensureWalletExists(user.uid, user);
+        // Attach listeners
+        attachWalletListener(user.uid);
+        attachTxListener(user.uid);
+        // Start camera (optional)
+        startLocalCamera().catch(err=>console.warn('camera failed',err));
+      } else {
+        me = null;
+        displayNameEl.textContent = 'Not signed';
+        signBtn.style.display = 'inline-block';
+        signOutBtn.style.display = 'none';
+        subInfoEl.textContent = 'Inicia sesión para cargar tu wallet';
+        balanceEl.textContent = '-- coins';
+        walletBalanceEl.textContent = '--';
+        walletIdEl.textContent = '';
+        // detach listeners
+        detachWalletListener();
+        detachTxListener();
+        stopLocalCamera();
       }
     });
 
-    // --- WebRTC básico para videollamada ---
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideo = document.getElementById('remoteVideo');
-    let peerConnection;
-    const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-    async function startVideoChat() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = stream;
-      peerConnection = new RTCPeerConnection(servers);
-      stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-      peerConnection.ontrack = (event) => remoteVideo.srcObject = event.streams[0];
+    /* ========== WALLET FUNCTIONS ====== */
+    // Ensure wallet exists using runTransaction: if null set initial coins
+    async function ensureWalletExists(uid, userObj){
+      const wRef = ref(db, `wallets/${uid}`);
+      try{
+        await runTransaction(wRef, (current)=>{
+          if (current === null) {
+            return {
+              coins: 100,   // initial coins for new users
+              createdAt: serverTimestamp(),
+              email: userObj.email || null,
+              name: userObj.displayName || null
+            };
+          }
+          // leave as is if exists
+          return current;
+        }, {applyLocally:false});
+      }catch(e){
+        console.error('ensureWalletExists err', e);
+      }
     }
-    startVideoChat();
+
+    // Attach a real-time listener to wallet balance and show in UI
+    function attachWalletListener(uid){
+      const wRef = ref(db, `wallets/${uid}`);
+      // detach previous
+      detachWalletListener();
+      walletListenerUnsub = onValue(wRef, snapshot=>{
+        const data = snapshot.val();
+        const coins = data && data.coins !== undefined ? data.coins : 0;
+        walletBalanceEl.textContent = coins + ' coins';
+        balanceEl.textContent = coins + ' coins';
+        subInfoEl.textContent = 'Wallet loaded';
+      });
+    }
+    function detachWalletListener(){
+      if(walletListenerUnsub) { walletListenerUnsub(); walletListenerUnsub = null; }
+    }
+
+    // Attach transaction history (last 20)
+    function attachTxListener(uid){
+      const txRef = query(ref(db, `transactions/${uid}`), limitToLast(20));
+      detachTxListener();
+      txsListenerUnsub = onValue(txRef, snap=>{
+        historyEl.innerHTML = '';
+        if(!snap.exists()) return;
+        const items = [];
+        snap.forEach(child=>{
+          items.push({key:child.key, val:child.val()});
+        });
+        // reverse to show newest first
+        items.reverse().forEach(it=>{
+          const d = it.val;
+          const div = document.createElement('div');
+          div.style.padding='6px';
+          div.style.borderBottom='1px dashed rgba(255,255,255,.03)';
+          div.innerHTML = `<strong>${d.type}</strong> <span class="small">(${new Date(d.ts||0).toLocaleString()})</span><div class="small">${d.note||''}</div><div>${d.amount>0?'+':''}${d.amount} coins</div>`;
+          historyEl.appendChild(div);
+        });
+      });
+    }
+    function detachTxListener(){
+      if(txsListenerUnsub){ txsListenerUnsub(); txsListenerUnsub = null; }
+    }
+
+    /* Deposit (for testing) - user can deposit coins into own wallet */
+    depositBtn.onclick = async ()=>{
+      if(!me) return alert('Inicia sesión primero');
+      const amount = Math.max(1, Math.floor(Number(depositAmountInput.value) || 0));
+      if(amount <= 0) return alert('Ingresa un monto válido');
+      try{
+        await changeBalanceAtomic(me.uid, amount, {type:'deposit', amount, note:'manual deposit'});
+        alert('Depositado ' + amount + ' coins');
+      }catch(e){ console.error(e); alert('Error depositando: ' + e.message); }
+    };
+
+    /* Atomic function to change balance (positive or negative) and record tx */
+    async function changeBalanceAtomic(uid, delta, txMeta = {}){
+      const wRef = ref(db, `wallets/${uid}/coins`);
+      // transaction on the coins node
+      const result = await runTransaction(wRef, (current)=>{
+        if (current === null) {
+          // wallet should exist, but if not, disallow negative
+          if(delta < 0) return; // abort
+          return (delta);
+        }
+        const newVal = current + delta;
+        if(newVal < 0) return; // abort
+        return newVal;
+      }, {applyLocally:false});
+
+      if(!result.committed) throw new Error('Transaction aborted (insufficient funds or conflict)');
+
+      // push a transaction record under transactions/{uid}
+      const txRef = ref(db, `transactions/${uid}`);
+      const pushRef = push(txRef);
+      await set(pushRef, {
+        type: txMeta.type || 'change',
+        amount: delta,
+        note: txMeta.note || '',
+        ts: serverTimestamp()
+      });
+      return result.snapshot.val(); // new coins value
+    }
+
+    /* ========== SIMPLE LOCAL GAME vs CPU ========== */
+    playLocalBtn.onclick = async () => {
+      if(!me) return alert('Inicia sesión para jugar');
+      const bet = Math.max(5, Math.floor(Number(betAmountInput.value) || 5));
+      // try to debit bet from user atomically
+      try {
+        // debit player
+        await changeBalanceAtomic(me.uid, -bet, {type:'bet', amount:-bet, note:'Local game placed'});
+      } catch(e){
+        return alert('No tienes saldo suficiente para apostar ' + bet);
+      }
+
+      // CPU chooses random
+      const opts = ['piedra','papel','tijeras'];
+      const playerPick = opts[Math.floor(Math.random()*3)]; // for demo pick random — normally player's choice from UI
+      const cpuPick = opts[Math.floor(Math.random()*3)];
+      const result = decideWinner(playerPick, cpuPick);
+      centerText.textContent = `You: ${playerPick} vs CPU: ${cpuPick} → ${result.text}`;
+      // resolve: if player wins, award pot (2*bet), if draw refund, if lose nothing (already debited)
+      try{
+        if(result.code === 'win'){
+          const pot = bet * 2;
+          await changeBalanceAtomic(me.uid, pot, {type:'win', amount:pot, note:`Won vs CPU (${playerPick} vs ${cpuPick})`});
+        } else if(result.code === 'draw'){
+          // refund bet
+          await changeBalanceAtomic(me.uid, bet, {type:'refund', amount:bet, note:`Draw vs CPU (${playerPick})`});
+        } // else lose -> nothing
+      }catch(err){ console.error('Error resolving result', err); }
+    };
+
+    function decideWinner(a,b){
+      if(a===b) return {code:'draw', text:'EMPATE'};
+      if((a==='piedra' && b==='tijeras')||(a==='tijeras' && b==='papel')||(a==='papel' && b==='piedra')) return {code:'win', text:'GANASTE'};
+      return {code:'lose', text:'PERDISTE'};
+    }
+
+    btnRock.onclick = ()=>userPick('piedra');
+    btnPaper.onclick = ()=>userPick('papel');
+    btnScissors.onclick = ()=>userPick('tijeras');
+
+    async function userPick(pick){
+      // for local demo: set pick UI then call playLocalBtn logic but use pick
+      if(!me) return alert('Inicia sesión');
+      const bet = Math.max(5, Math.floor(Number(betAmountInput.value) || 5));
+      // debit
+      try{
+        await changeBalanceAtomic(me.uid, -bet, {type:'bet', amount:-bet, note:`Bet for pick ${pick}`});
+      }catch(e){
+        return alert('Saldo insuficiente');
+      }
+      const opts = ['piedra','papel','tijeras'];
+      const cpu = opts[Math.floor(Math.random()*3)];
+      const res = decideWinner(pick, cpu);
+      centerText.textContent = `Tú: ${pick} — Rival: ${cpu} → ${res.text}`;
+      if(res.code === 'win'){
+        const pot = bet * 2;
+        await changeBalanceAtomic(me.uid, pot, {type:'win', amount:pot, note:`Win ${pick} vs ${cpu}`});
+      } else if(res.code === 'draw'){
+        await changeBalanceAtomic(me.uid, bet, {type:'refund', amount:bet, note:`Draw ${pick}`});
+      } // lose -> already lost the bet
+    }
+
+    /* ========== CAMERA (local) ========== */
+    let localStream = null;
+    async function startLocalCamera(){
+      try{
+        localStream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:320}},audio:true});
+        const localVideo = document.getElementById('localVideo');
+        localVideo.srcObject = localStream;
+      }catch(e){
+        console.warn('Camera access denied or not available', e);
+      }
+    }
+    function stopLocalCamera(){
+      if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; document.getElementById('localVideo').srcObject = null; }
+    }
+
+    /* ========== UTIL =========== */
+    function logStatus(msg){
+      statusEl.textContent = msg;
+      console.log('[STATUS]',msg);
+    }
   </script>
 </body>
 </html>
