@@ -469,9 +469,8 @@
             isGameCreator: false,
             playerChoice: null,
             activeGameListener: null,
-            // --- LÓGICA DE INVITACIÓN RECONSTRUIDA ---
-            pendingInvitation: null, // Objeto para gestionar la invitación enviada
-            activeInvitationListener: null, // Listener para la invitación enviada
+            pendingInvitation: null, 
+            activeInvitationListener: null,
         };
 
         // --- DOM ELEMENTS ---
@@ -663,9 +662,9 @@
                         dbManager.listenForInvitations(user.uid);
                         ui.showScreen(dom.lobbyScreen);
                     } else {
-                        if (appState.currentUser) {
-                           dbManager.onUserDisconnect(appState.currentUser.uid);
-                        }
+                        // --- CORRECCIÓN CRÍTICA ---
+                        // Se elimina la llamada manual a onUserDisconnect.
+                        // El hook onDisconnect() de Firebase se encarga de esto de forma segura.
                         appState.currentUser = null;
                         appState.currentUserProfile = null;
                         ui.showScreen(dom.loginScreen);
@@ -684,11 +683,14 @@
             onUserConnect: () => {
                 const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
                 db.ref('.info/connected').on('value', snap => {
-                    if (snap.val() === false) return;
-                    userStatusRef.onDisconnect().set('offline').then(() => userStatusRef.set('online'));
+                    if (snap.val() === false) return; // Esperar a estar realmente conectado
+                    // Esta es la forma correcta: el servidor de Firebase gestiona la desconexión
+                    userStatusRef.onDisconnect().set('offline').then(() => {
+                        userStatusRef.set('online');
+                    });
                 });
             },
-            onUserDisconnect: (uid) => db.ref(`/users/${uid}/status`).set('offline'),
+            // Se elimina la función onUserDisconnect porque era la causa del error.
             updateUserStatus: (status) => { if(appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status); },
             listenToProfile: (uid) => db.ref(`users/${uid}`).on('value', snap => { appState.currentUserProfile = snap.val(); ui.updateLobbyHeader(); }),
             listenToPlayers: () => db.ref('users').on('value', snap => ui.renderPlayers(snap.val() || {})),
@@ -776,12 +778,11 @@
                 ui.resetControlButtons(true);
             },
             
-            // --- LÓGICA DE INVITACIÓN RECONSTRUIDA ---
+            // --- LÓGICA DE INVITACIÓN RECONSTRUIDA Y A PRUEBA DE FALLOS ---
             sendInvitation: (opponentId, opponentName, bet) => {
                 const gameId = db.ref('games').push().key;
-                const invitationKey = db.ref(`invitations/${opponentId}`).push().key; // Usar una clave única
+                const invitationKey = db.ref(`invitations/${opponentId}`).push().key;
 
-                // Guardar toda la info necesaria para cancelar después
                 appState.pendingInvitation = { gameId, opponentId, invitationKey };
 
                 const gameData = {
@@ -800,11 +801,9 @@
                     invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName });
                     ui.showWaitingModal(opponentName);
                     
-                    // Medida de seguridad: Si el creador se desconecta, se borra todo.
                     gameRef.onDisconnect().remove();
                     invitationRef.onDisconnect().remove();
 
-                    // Escuchar si el juego es aceptado
                     appState.activeInvitationListener = gameRef.on('value', snap => {
                         if (snap.exists() && snap.val().status === 'active') {
                             game.cleanUpInvitationListeners();
@@ -835,7 +834,6 @@
                     gameRef.off('value', appState.activeInvitationListener);
                 }
                 
-                // Cancelar las operaciones de desconexión porque la invitación se resolvió (aceptada o cancelada)
                 gameRef.onDisconnect().cancel();
                 invitationRef.onDisconnect().cancel();
                 
@@ -881,14 +879,13 @@
                     alert("An unexpected error occurred while joining the game.");
                 }
             },
-            // --- FIN DE LA LÓGICA DE INVITACIÓN ---
-
+            
             join: (gameId, isCreator) => {
                 appState.currentGameId = gameId;
                 appState.isGameCreator = isCreator;
                 dbManager.updateUserStatus('ingame');
                 ui.showScreen(dom.gameScreen);
-                ui.hideModal(); // Asegurarse de que cualquier modal se oculte
+                ui.hideModal();
                 webrtc.start();
 
                 const gameRef = db.ref(`games/${gameId}`);
@@ -1058,7 +1055,6 @@
                     db.ref(`games/${appState.currentGameId}`).off('value', appState.activeGameListener);
                 }
                 
-                // Limpia cualquier estado de invitación residual al salir de un juego
                 if(appState.pendingInvitation) game.cleanUpInvitationListeners(); 
 
                 dbManager.updateUserStatus('online');
@@ -1076,11 +1072,6 @@
             console.log("Initializing Metal RPS Arena...");
             authManager.init();
             game.init();
-            window.addEventListener('beforeunload', () => {
-                if (appState.currentUser) {
-                    // La lógica onDisconnect de Firebase se encargará de limpiar
-                }
-            });
         }
 
         init();
