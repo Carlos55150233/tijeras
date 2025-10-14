@@ -706,7 +706,12 @@
         function logout() {
             if (currentUser) {
                 database.ref('users/' + currentUser.uid + '/status').set('offline');
+                database.ref('users/' + currentUser.uid + '/lastSeen').set(Date.now());
             }
+            
+            // Stop listening to online users
+            database.ref('users').off();
+            
             auth.signOut();
         }
 
@@ -716,18 +721,22 @@
         async function initializeUser() {
             const userRef = database.ref('users/' + currentUser.uid);
             
-            // Set user status to online
-            await userRef.update({
+            // Initialize user data first
+            const snapshot = await userRef.once('value');
+            const userData = snapshot.val() || {};
+            
+            // Set complete user data
+            await userRef.set({
                 email: currentUser.email,
                 status: 'online',
-                lastSeen: Date.now()
+                lastSeen: Date.now(),
+                wallet: userData.wallet || 100,
+                uid: currentUser.uid
             });
 
-            // Initialize wallet if doesn't exist
-            const snapshot = await userRef.child('wallet').once('value');
-            if (!snapshot.exists()) {
-                await userRef.update({ wallet: 100 });
-            }
+            // Set user offline on disconnect
+            userRef.child('status').onDisconnect().set('offline');
+            userRef.child('lastSeen').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
 
             // Listen for wallet changes
             userRef.child('wallet').on('value', snapshot => {
@@ -739,14 +748,11 @@
             // Listen for incoming challenges
             userRef.child('challenge').on('value', snapshot => {
                 const challenge = snapshot.val();
-                if (challenge && challenge.from) {
+                if (challenge && challenge.from && challenge.from !== currentUser.uid) {
                     pendingChallenge = challenge;
                     showChallengeModal(challenge);
                 }
             });
-
-            // Set user offline on disconnect
-            userRef.child('status').onDisconnect().set('offline');
 
             document.getElementById('userName').textContent = 'Welcome, ' + (currentUser.email.split('@')[0]);
             showScreen('lobbyScreen');
@@ -758,39 +764,66 @@
         // ============================================
         function loadOnlineUsers() {
             const usersRef = database.ref('users');
+            
+            // Remove previous listener
+            usersRef.off('value');
+            
             usersRef.on('value', snapshot => {
                 const users = snapshot.val();
                 const container = document.getElementById('onlineUsers');
                 container.innerHTML = '';
+
+                console.log('All users:', users); // Debug
 
                 if (!users) {
                     container.innerHTML = '<p style="color: #ccc; text-align: center;">No players online</p>';
                     return;
                 }
 
+                let onlineCount = 0;
+
                 for (let uid in users) {
+                    console.log('Checking user:', uid, users[uid]); // Debug
+                    
                     if (uid !== currentUser.uid && users[uid].status === 'online') {
+                        onlineCount++;
                         const userDiv = document.createElement('div');
                         userDiv.className = 'user-item';
+                        
+                        const userName = users[uid].email ? users[uid].email.split('@')[0] : 'Player';
+                        const userWallet = users[uid].wallet || 0;
+                        
                         userDiv.innerHTML = `
                             <div>
-                                <div>${users[uid].email.split('@')[0]}</div>
-                                <div style="font-size: 12px; color: #aaa;">💰 ${users[uid].wallet || 0} coins</div>
+                                <div style="font-size: 16px; font-weight: bold;">${userName}</div>
+                                <div style="font-size: 12px; color: #4ade80;">🟢 Online</div>
+                                <div style="font-size: 12px; color: #fbbf24;">💰 ${userWallet} coins</div>
                             </div>
-                            <button class="challenge-btn" onclick="challengeUser('${uid}')">Challenge</button>
+                            <button class="challenge-btn" onclick="challengeUser('${uid}', '${userName}')">Challenge</button>
                         `;
                         container.appendChild(userDiv);
                     }
                 }
 
-                if (container.children.length === 0) {
-                    container.innerHTML = '<p style="color: #ccc; text-align: center;">No players online</p>';
+                if (onlineCount === 0) {
+                    container.innerHTML = `
+                        <p style="color: #ccc; text-align: center; padding: 20px;">
+                            No other players online yet.<br>
+                            <span style="font-size: 12px; color: #999;">
+                                Open this game in another browser/device to test!
+                            </span>
+                        </p>
+                    `;
                 }
+
+                console.log('Online players found:', onlineCount); // Debug
             });
         }
 
-        async function challengeUser(opponentId) {
+        async function challengeUser(opponentId, opponentName) {
             sounds.click();
+            
+            console.log('Challenging user:', opponentId); // Debug
             
             // Create game room
             const gameRef = database.ref('games').push();
@@ -810,21 +843,39 @@
                 fromEmail: currentUser.email
             });
 
-            document.getElementById('gameStatus').textContent = 'Challenge sent! Waiting for response...';
+            document.getElementById('gameStatus').textContent = `Challenge sent to ${opponentName}! Waiting for response...`;
             showScreen('gameScreen');
             document.getElementById('betContainer').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
 
-            // Listen for challenge response
-            gameRef.on('value', snapshot => {
+            // Listen for challenge response with timeout
+            const gameListener = gameRef.on('value', snapshot => {
                 const game = snapshot.val();
                 if (game && game.status === 'accepted') {
+                    gameRef.off('value', gameListener);
                     startGame();
                 } else if (game && game.status === 'declined') {
+                    gameRef.off('value', gameListener);
                     alert('Challenge declined');
+                    exitGame();
+                } else if (!game) {
+                    gameRef.off('value', gameListener);
+                    alert('Challenge cancelled');
                     exitGame();
                 }
             });
+
+            // Timeout after 30 seconds
+            setTimeout(() => {
+                gameRef.once('value', snapshot => {
+                    const game = snapshot.val();
+                    if (game && game.status === 'pending') {
+                        gameRef.remove();
+                        alert('Challenge timeout - no response');
+                        exitGame();
+                    }
+                });
+            }, 30000);
         }
 
         function showChallengeModal(challenge) {
@@ -1252,4 +1303,3 @@
     </script>
 </body>
 </html>
-
