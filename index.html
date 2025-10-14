@@ -176,6 +176,8 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block;
+            background: #000;
         }
 
         .player-label {
@@ -451,31 +453,31 @@
 <body>
     <!-- Login Screen -->
     <div id="loginScreen">
-        <h1>🎮 Rock Paper Scissors Arena</h1>
-        <p style="color: #ccc; margin-bottom: 30px;">Live Battle with Video Chat</p>
-        <input type="email" id="emailInput" placeholder="Email" class="login-btn" style="background: rgba(255,255,255,0.2);">
-        <input type="password" id="passwordInput" placeholder="Password (min 6 characters)" class="login-btn" style="background: rgba(255,255,255,0.2);">
-        <button onclick="loginWithEmail()" class="login-btn">Login</button>
+        <h1>🎮 Piedra Papel o Tijera</h1>
+        <p style="color: #ccc; margin-bottom: 30px;">Batalla en Vivo con Videollamada</p>
+        <input type="email" id="emailInput" placeholder="Correo electrónico" class="login-btn" style="background: rgba(255,255,255,0.2);">
+        <input type="password" id="passwordInput" placeholder="Contraseña (mínimo 6 caracteres)" class="login-btn" style="background: rgba(255,255,255,0.2);">
+        <button onclick="loginWithEmail()" class="login-btn">Iniciar Sesión</button>
         <button onclick="registerWithEmail()" class="login-btn" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
-            Create Account
+            Crear Cuenta
         </button>
-        <div style="margin: 20px 0; color: #999;">OR</div>
+        <div style="margin: 20px 0; color: #999;">O</div>
         <button onclick="loginWithGoogle()" class="login-btn" style="background: linear-gradient(135deg, #ea4335, #fbbc05);">
-            Sign in with Google
+            Iniciar con Google
         </button>
     </div>
 
     <!-- Lobby Screen -->
     <div id="lobbyScreen">
         <div class="user-info">
-            <h2 id="userName" style="color: #00d4ff;">Welcome!</h2>
-            <div class="wallet">💰 <span id="userBalance">100</span> coins</div>
+            <h2 id="userName" style="color: #00d4ff;">¡Bienvenido!</h2>
+            <div class="wallet">💰 <span id="userBalance">100</span> monedas</div>
         </div>
-        <h3 style="color: #fff; margin-bottom: 15px;">Online Players</h3>
+        <h3 style="color: #fff; margin-bottom: 15px;">Jugadores en Línea</h3>
         <div class="online-users" id="onlineUsers">
             <div class="spinner"></div>
         </div>
-        <button onclick="logout()" class="action-btn secondary" style="width: 100%; margin-top: 20px;">Logout</button>
+        <button onclick="logout()" class="action-btn secondary" style="width: 100%; margin-top: 20px;">Cerrar Sesión</button>
     </div>
 
     <!-- Game Screen -->
@@ -495,14 +497,14 @@
                     </div>
                 </div>
                 
-                <div class="game-status" id="gameStatus">Waiting for players...</div>
+                <div class="game-status" id="gameStatus">Esperando jugadores...</div>
                 <div id="resultDisplay"></div>
             </div>
 
             <div class="bet-container" id="betContainer">
-                <label style="color: #fff; font-size: 18px;">Bet Amount: </label>
+                <label style="color: #fff; font-size: 18px;">Cantidad de Apuesta: </label>
                 <input type="number" id="betAmount" class="bet-input" value="5" min="5">
-                <button onclick="confirmBet()" class="action-btn">Confirm Bet</button>
+                <button onclick="confirmBet()" class="action-btn">Confirmar Apuesta</button>
             </div>
 
             <div class="controls" id="controls" style="display: none;">
@@ -518,7 +520,7 @@
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <button onclick="exitGame()" class="action-btn secondary">Exit Game</button>
+                <button onclick="exitGame()" class="action-btn secondary">Salir del Juego</button>
             </div>
         </div>
     </div>
@@ -526,10 +528,10 @@
     <!-- Challenge Modal -->
     <div id="challengeModal" class="modal">
         <div class="modal-content">
-            <h2>Incoming Challenge!</h2>
+            <h2>¡Desafío Recibido!</h2>
             <p id="challengeText" style="margin: 20px 0;"></p>
-            <button onclick="acceptChallenge()" class="action-btn">Accept</button>
-            <button onclick="declineChallenge()" class="action-btn secondary">Decline</button>
+            <button onclick="acceptChallenge()" class="action-btn">Aceptar</button>
+            <button onclick="declineChallenge()" class="action-btn secondary">Rechazar</button>
         </div>
     </div>
 
@@ -635,27 +637,27 @@
             const password = document.getElementById('passwordInput').value;
             
             if (!email || !password) {
-                alert('Please enter email and password');
+                alert('Por favor ingresa correo y contraseña');
                 return;
             }
 
             if (password.length < 6) {
-                alert('Password must be at least 6 characters');
+                alert('La contraseña debe tener al menos 6 caracteres');
                 return;
             }
 
             try {
                 await auth.signInWithEmailAndPassword(email, password);
-                alert('Login successful! 🎮');
+                alert('¡Sesión iniciada correctamente! 🎮');
             } catch (error) {
                 if (error.code === 'auth/user-not-found') {
-                    alert('Account not found. Please create an account first.');
+                    alert('Cuenta no encontrada. Por favor crea una cuenta primero.');
                 } else if (error.code === 'auth/wrong-password') {
-                    alert('Incorrect password. Please try again.');
+                    alert('Contraseña incorrecta. Intenta de nuevo.');
                 } else if (error.code === 'auth/invalid-email') {
-                    alert('Invalid email address.');
+                    alert('Dirección de correo inválida.');
                 } else {
-                    alert('Login failed: ' + error.message);
+                    alert('Error al iniciar sesión: ' + error.message);
                 }
             }
         }
@@ -665,32 +667,32 @@
             const password = document.getElementById('passwordInput').value;
             
             if (!email || !password) {
-                alert('Please enter email and password');
+                alert('Por favor ingresa correo y contraseña');
                 return;
             }
 
             if (password.length < 6) {
-                alert('Password must be at least 6 characters');
+                alert('La contraseña debe tener al menos 6 caracteres');
                 return;
             }
 
             if (!email.includes('@') || !email.includes('.')) {
-                alert('Please enter a valid email address');
+                alert('Por favor ingresa un correo válido');
                 return;
             }
 
             try {
                 await auth.createUserWithEmailAndPassword(email, password);
-                alert('Account created successfully! 🎉\nYou start with 100 coins!');
+                alert('¡Cuenta creada exitosamente! 🎉\n¡Empiezas con 100 monedas!');
             } catch (error) {
                 if (error.code === 'auth/email-already-in-use') {
-                    alert('This email is already registered. Please login instead.');
+                    alert('Este correo ya está registrado. Por favor inicia sesión.');
                 } else if (error.code === 'auth/weak-password') {
-                    alert('Password is too weak. Use at least 6 characters.');
+                    alert('Contraseña muy débil. Usa al menos 6 caracteres.');
                 } else if (error.code === 'auth/invalid-email') {
-                    alert('Invalid email address format.');
+                    alert('Formato de correo inválido.');
                 } else {
-                    alert('Registration failed: ' + error.message);
+                    alert('Error al registrarse: ' + error.message);
                 }
             }
         }
@@ -700,7 +702,7 @@
             try {
                 await auth.signInWithPopup(provider);
             } catch (error) {
-                alert('Google login failed: ' + error.message);
+                alert('Error al iniciar con Google: ' + error.message);
             }
         }
 
@@ -755,7 +757,7 @@
                 }
             });
 
-            document.getElementById('userName').textContent = 'Welcome, ' + (currentUser.email.split('@')[0]);
+            document.getElementById('userName').textContent = 'Bienvenido, ' + (currentUser.email.split('@')[0]);
             showScreen('lobbyScreen');
             loadOnlineUsers();
         }
@@ -809,9 +811,9 @@
                 if (onlineCount === 0) {
                     container.innerHTML = `
                         <p style="color: #ccc; text-align: center; padding: 20px;">
-                            No other players online yet.<br>
+                            No hay otros jugadores en línea aún.<br>
                             <span style="font-size: 12px; color: #999;">
-                                Open this game in another browser/device to test!
+                                ¡Abre este juego en otro navegador/dispositivo para probar!
                             </span>
                         </p>
                     `;
@@ -844,7 +846,7 @@
                 fromEmail: currentUser.email
             });
 
-            document.getElementById('gameStatus').textContent = `Challenge sent to ${opponentName}! Waiting for response...`;
+            document.getElementById('gameStatus').textContent = `¡Desafío enviado a ${opponentName}! Esperando respuesta...`;
             showScreen('gameScreen');
             document.getElementById('betContainer').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
@@ -857,11 +859,11 @@
                     startGame();
                 } else if (game && game.status === 'declined') {
                     gameRef.off('value', gameListener);
-                    alert('Challenge declined');
+                    alert('Desafío rechazado');
                     exitGame();
                 } else if (!game) {
                     gameRef.off('value', gameListener);
-                    alert('Challenge cancelled');
+                    alert('Desafío cancelado');
                     exitGame();
                 }
             });
@@ -872,7 +874,7 @@
                     const game = snapshot.val();
                     if (game && game.status === 'pending') {
                         gameRef.remove();
-                        alert('Challenge timeout - no response');
+                        alert('Tiempo de espera agotado - sin respuesta');
                         exitGame();
                     }
                 });
@@ -883,7 +885,7 @@
             database.ref('users/' + challenge.from).once('value', snapshot => {
                 const challenger = snapshot.val();
                 document.getElementById('challengeText').textContent = 
-                    `${challenger.email.split('@')[0]} wants to play!`;
+                    `¡${challenger.email.split('@')[0]} quiere jugar contigo!`;
                 document.getElementById('challengeModal').style.display = 'flex';
             });
         }
@@ -914,10 +916,10 @@
         // GAME FUNCTIONS
         // ============================================
         async function startGame() {
-            document.getElementById('gameStatus').textContent = 'Setting up video...';
+            document.getElementById('gameStatus').textContent = 'Configurando video...';
             document.getElementById('betContainer').style.display = 'block';
             
-            // Initialize WebRTC
+            // Initialize WebRTC FIRST
             await setupWebRTC();
 
             // Load opponent info
@@ -932,14 +934,14 @@
             document.getElementById('remotePlayerLabel').textContent = opponent.email.split('@')[0];
             document.getElementById('remotePlayerBalance').textContent = '💰 ' + (opponent.wallet || 0);
             
-            document.getElementById('gameStatus').textContent = 'Set your bet amount and confirm!';
+            document.getElementById('gameStatus').textContent = '¡Establece tu apuesta y confirma!';
         }
 
         async function confirmBet() {
             const betAmount = parseInt(document.getElementById('betAmount').value);
             
             if (betAmount < 5) {
-                alert('Minimum bet is 5 coins!');
+                alert('¡La apuesta mínima es de 5 monedas!');
                 return;
             }
 
@@ -948,7 +950,7 @@
             const balance = balanceSnapshot.val() || 0;
             
             if (balance < betAmount) {
-                alert('Insufficient balance!');
+                alert('¡Saldo insuficiente!');
                 return;
             }
 
@@ -966,7 +968,7 @@
             }
 
             document.getElementById('betContainer').style.display = 'none';
-            document.getElementById('gameStatus').textContent = 'Waiting for opponent to confirm bet...';
+            document.getElementById('gameStatus').textContent = 'Esperando que el oponente confirme la apuesta...';
 
             // Listen for both players ready - ONE TIME ONLY
             const checkBothReady = (snapshot) => {
@@ -997,7 +999,7 @@
                 await sleep(1000);
             }
 
-            document.getElementById('gameStatus').textContent = 'Choose your move NOW!';
+            document.getElementById('gameStatus').textContent = '¡Elige tu jugada AHORA!';
             document.getElementById('controls').style.display = 'flex';
             
             await gameRef.update({ 
@@ -1022,6 +1024,28 @@
             sounds.click();
             
             const gameRef = database.ref('games/' + currentGameId);
+            const gameSnapshot = await gameRef.once('value');
+            const game = gameSnapshot.val();
+            
+            if (game.status !== 'playing') {
+                return; // Ignore if not in playing state
+            }
+            
+            // Highlight selected button
+            document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById(choice + 'Btn').classList.add('selected');
+
+            const isPlayer1 = game.player1 === currentUser.uid;
+            
+            if (isPlayer1) {
+                await gameRef.update({ choice1: choice });
+            } else {
+                await gameRef.update({ choice2: choice });
+            }
+
+            document.getElementById('controls').style.display = 'none';
+            document.getElementById('gameStatus').textContent = 'Esperando al oponente...';
+        }GameId);
             const gameSnapshot = await gameRef.once('value');
             const game = gameSnapshot.val();
             
@@ -1096,7 +1120,7 @@
             const totalPot = bet1 + bet2;
 
             if (result === 'draw') {
-                showResult('draw', '🤝 It\'s a Draw! Coins refunded');
+                showResult('draw', '🤝 ¡Es un Empate! Monedas reembolsadas');
                 sounds.draw();
             } else {
                 const winnerId = winner === 'player1' ? game.player1 : game.player2;
@@ -1114,11 +1138,11 @@
                 });
 
                 if (winnerId === currentUser.uid) {
-                    showResult('win', `🎉 You Win! +${totalPot} coins`);
+                    showResult('win', `🎉 ¡Ganaste! +${totalPot} monedas`);
                     sounds.win();
                 } else {
                     const loserBet = currentUser.uid === game.player1 ? bet1 : bet2;
-                    showResult('lose', `💔 You Lose! -${loserBet} coins`);
+                    showResult('lose', `💔 ¡Perdiste! -${loserBet} monedas`);
                     sounds.lose();
                 }
             }
@@ -1129,8 +1153,8 @@
                 const buttons = document.createElement('div');
                 buttons.style.marginTop = '20px';
                 buttons.innerHTML = `
-                    <button onclick="playAgain()" class="action-btn">Play Again</button>
-                    <button onclick="exitGame()" class="action-btn secondary">Exit to Lobby</button>
+                    <button onclick="playAgain()" class="action-btn">Jugar de Nuevo</button>
+                    <button onclick="exitGame()" class="action-btn secondary">Salir al Lobby</button>
                 `;
                 resultDiv.appendChild(buttons);
             }, 2000);
@@ -1167,7 +1191,7 @@
             
             // Reset UI
             document.getElementById('resultDisplay').innerHTML = '';
-            document.getElementById('gameStatus').textContent = 'Set your bet and confirm!';
+            document.getElementById('gameStatus').textContent = '¡Establece tu apuesta y confirma!';
             document.getElementById('betContainer').style.display = 'block';
             document.getElementById('controls').style.display = 'none';
             document.getElementById('betAmount').value = '5';
@@ -1217,52 +1241,80 @@
         // ============================================
         async function setupWebRTC() {
             try {
-                console.log('🎥 Starting WebRTC setup...');
+                console.log('🎥 Iniciando configuración de WebRTC...');
                 
                 // Get local video stream with better constraints
                 localStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        height: { ideal: 480 },
+                        facingMode: 'user'
                     },
                     audio: {
                         echoCancellation: true,
-                        noiseSuppression: true
+                        noiseSuppression: true,
+                        autoGainControl: true
                     }
                 });
                 
-                console.log('✅ Local stream obtained');
-                document.getElementById('localVideo').srcObject = localStream;
+                console.log('✅ Stream local obtenido:', localStream);
+                console.log('📹 Tracks de video:', localStream.getVideoTracks());
+                console.log('🎤 Tracks de audio:', localStream.getAudioTracks());
+                
+                // Set local video
+                const localVideo = document.getElementById('localVideo');
+                localVideo.srcObject = localStream;
+                localVideo.muted = true; // Mute local to avoid echo
+                
+                // Force play
+                localVideo.play().then(() => {
+                    console.log('✅ Video local reproduciendo');
+                }).catch(err => {
+                    console.error('❌ Error al reproducir video local:', err);
+                });
 
                 // Create peer connection
                 peerConnection = new RTCPeerConnection(rtcConfig);
-                console.log('✅ Peer connection created');
+                console.log('✅ Conexión peer creada');
 
                 // Add local stream to peer connection
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
-                    console.log('✅ Track added:', track.kind);
+                    console.log('✅ Track añadido:', track.kind, track.label);
                 });
 
                 // Handle incoming stream
                 peerConnection.ontrack = event => {
-                    console.log('✅ Remote track received:', event.streams[0]);
-                    document.getElementById('remoteVideo').srcObject = event.streams[0];
+                    console.log('✅ Track remoto recibido:', event.track.kind);
+                    console.log('✅ Stream remoto:', event.streams[0]);
+                    
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    if (remoteVideo.srcObject !== event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                        remoteVideo.play().then(() => {
+                            console.log('✅ Video remoto reproduciendo');
+                        }).catch(err => {
+                            console.error('❌ Error al reproducir video remoto:', err);
+                        });
+                    }
                 };
 
                 // Connection state monitoring
                 peerConnection.oniceconnectionstatechange = () => {
-                    console.log('🔗 ICE Connection State:', peerConnection.iceConnectionState);
+                    console.log('🔗 Estado de conexión ICE:', peerConnection.iceConnectionState);
+                    if (peerConnection.iceConnectionState === 'connected') {
+                        document.getElementById('gameStatus').textContent = '🎥 ¡Conexión de video establecida!';
+                    }
                 };
 
                 peerConnection.onconnectionstatechange = () => {
-                    console.log('🔗 Connection State:', peerConnection.connectionState);
+                    console.log('🔗 Estado de conexión:', peerConnection.connectionState);
                 };
 
                 // Handle ICE candidates
                 peerConnection.onicecandidate = event => {
                     if (event.candidate) {
-                        console.log('📡 Sending ICE candidate');
+                        console.log('📡 Enviando candidato ICE');
                         database.ref('games/' + currentGameId + '/iceCandidates/' + currentUser.uid).push({
                             candidate: event.candidate.toJSON()
                         });
@@ -1275,7 +1327,7 @@
                 const isPlayer1 = game.player1 === currentUser.uid;
 
                 if (isPlayer1) {
-                    console.log('👤 Player 1: Creating offer...');
+                    console.log('👤 Jugador 1: Creando oferta...');
                     
                     // Player 1 creates offer
                     const offer = await peerConnection.createOffer();
@@ -1284,13 +1336,13 @@
                         sdp: offer.sdp,
                         type: offer.type
                     });
-                    console.log('✅ Offer created and sent');
+                    console.log('✅ Oferta creada y enviada');
 
                     // Listen for answer
                     database.ref('games/' + currentGameId + '/answer').on('value', async snapshot => {
                         const answer = snapshot.val();
                         if (answer && !peerConnection.currentRemoteDescription) {
-                            console.log('✅ Answer received, setting remote description');
+                            console.log('✅ Respuesta recibida, estableciendo descripción remota');
                             await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
                         }
                     });
@@ -1299,20 +1351,24 @@
                     database.ref('games/' + currentGameId + '/iceCandidates/' + game.player2).on('child_added', async snapshot => {
                         const data = snapshot.val();
                         if (data && data.candidate) {
-                            console.log('📡 Adding remote ICE candidate');
-                            const candidate = new RTCIceCandidate(data.candidate);
-                            await peerConnection.addIceCandidate(candidate);
+                            console.log('📡 Añadiendo candidato ICE remoto');
+                            try {
+                                const candidate = new RTCIceCandidate(data.candidate);
+                                await peerConnection.addIceCandidate(candidate);
+                            } catch (err) {
+                                console.error('❌ Error añadiendo candidato ICE:', err);
+                            }
                         }
                     });
 
                 } else {
-                    console.log('👤 Player 2: Waiting for offer...');
+                    console.log('👤 Jugador 2: Esperando oferta...');
                     
                     // Player 2 creates answer
                     database.ref('games/' + currentGameId + '/offer').on('value', async snapshot => {
                         const offer = snapshot.val();
                         if (offer && !peerConnection.currentRemoteDescription) {
-                            console.log('✅ Offer received, creating answer');
+                            console.log('✅ Oferta recibida, creando respuesta');
                             await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
                             const answer = await peerConnection.createAnswer();
                             await peerConnection.setLocalDescription(answer);
@@ -1320,7 +1376,7 @@
                                 sdp: answer.sdp,
                                 type: answer.type
                             });
-                            console.log('✅ Answer created and sent');
+                            console.log('✅ Respuesta creada y enviada');
                         }
                     });
 
@@ -1328,18 +1384,20 @@
                     database.ref('games/' + currentGameId + '/iceCandidates/' + game.player1).on('child_added', async snapshot => {
                         const data = snapshot.val();
                         if (data && data.candidate) {
-                            console.log('📡 Adding remote ICE candidate');
-                            const candidate = new RTCIceCandidate(data.candidate);
-                            await peerConnection.addIceCandidate(candidate);
+                            console.log('📡 Añadiendo candidato ICE remoto');
+                            try {
+                                const candidate = new RTCIceCandidate(data.candidate);
+                                await peerConnection.addIceCandidate(candidate);
+                            } catch (err) {
+                                console.error('❌ Error añadiendo candidato ICE:', err);
+                            }
                         }
                     });
                 }
 
-                document.getElementById('gameStatus').textContent = '🎥 Video connection established!';
-
             } catch (error) {
-                console.error('❌ WebRTC setup error:', error);
-                alert('Could not access camera/microphone: ' + error.message + '\nPlease grant permissions and try again.');
+                console.error('❌ Error de configuración WebRTC:', error);
+                alert('No se pudo acceder a la cámara/micrófono: ' + error.message + '\nPor favor, concede los permisos e intenta de nuevo.');
                 exitGame();
             }
         }
