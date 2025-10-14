@@ -436,8 +436,17 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
+    <!-- SimplePeer Library -->
+    <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
+
 
     <script type="module">
+        // --- MODIFICACIÓN MAYOR ---
+        // Lógica de WebRTC reemplazada con la librería SimplePeer para mayor estabilidad.
+        // Se ha mejorado la lógica de limpieza de invitaciones para evitar estados "fantasma".
+        // Se ha reforzado la máquina de estados del juego para una mayor robustez.
+        
         // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
@@ -462,7 +471,7 @@
             currentUserProfile: null,
             currentGameId: null,
             localStream: null,
-            peerConnection: null,
+            peer: null, // Reemplaza peerConnection
             isGameCreator: false,
             playerChoice: null,
             activeGameListener: null,
@@ -573,14 +582,6 @@
                 if (!invitation) return; 
                 const invitationRef = invitationSnap.ref;
 
-                const gameRef = db.ref(`games/${invitation.gameId}`);
-                const gameListener = gameRef.on('value', gameSnap => {
-                    if (!gameSnap.exists()) {
-                        ui.hideModal();
-                        gameRef.off('value', gameListener);
-                    }
-                });
-
                 const modalHTML = `
                     <div class="modal" id="invitation-modal">
                         <div class="modal-content">
@@ -594,13 +595,11 @@
                 dom.modalContainer.innerHTML = modalHTML;
                 
                 document.getElementById('accept-challenge-btn').onclick = () => {
-                    gameRef.off('value', gameListener);
                     game.acceptInvitation(invitation.gameId, invitationRef);
-                    ui.hideModal(); // Hide modal immediately to prevent double-clicks
+                    ui.hideModal(); 
                 };
 
                 document.getElementById('decline-challenge-btn').onclick = () => {
-                    gameRef.off('value', gameListener);
                     game.declineInvitation(invitation.gameId, invitationRef);
                     ui.hideModal();
                 };
@@ -640,15 +639,12 @@
             },
             updateGameInfo: (gameData) => {
                 if (!gameData || !gameData.players) return;
-                
                 const myUid = appState.currentUser.uid;
                 const p1Data = gameData.players.p1;
                 const p2Data = gameData.players.p2;
-
                 const amP1 = p1Data.uid === myUid;
                 const localPlayer = amP1 ? p1Data : p2Data;
                 const remotePlayer = amP1 ? p2Data : p1Data;
-                
                 dom.localPlayerName.textContent = localPlayer.displayName;
                 dom.localPlayerWallet.textContent = localPlayer.wallet;
                 dom.remotePlayerName.textContent = remotePlayer.displayName;
@@ -703,56 +699,80 @@
             updateUserStatus: (status) => { if(appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status); },
             listenToProfile: (uid) => db.ref(`users/${uid}`).on('value', snap => { appState.currentUserProfile = snap.val(); ui.updateLobbyHeader(); }),
             listenToPlayers: () => db.ref('users').on('value', snap => ui.renderPlayers(snap.val() || {})),
-            listenForInvitations: (uid) => db.ref(`invitations/${uid}`).on('child_added', ui.showInvitationModal)
-        };
-        
-        // --- WEBRTC MANAGER ---
-        const webrtc = {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
-            start: async () => {
-                try {
-                    appState.peerConnection = new RTCPeerConnection(webrtc.config);
-                    appState.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    dom.localVideo.srcObject = appState.localStream;
-                    appState.localStream.getTracks().forEach(track => appState.peerConnection.addTrack(track, appState.localStream));
-                    appState.peerConnection.ontrack = e => { dom.remoteVideo.srcObject = e.streams[0]; };
-    
-                    const candidatesRef = db.ref(`games/${appState.currentGameId}/iceCandidates`);
-                    appState.peerConnection.onicecandidate = e => { if(e.candidate) candidatesRef.push(e.candidate.toJSON()); };
-                    candidatesRef.on('child_added', snap => { if(snap.exists()) appState.peerConnection.addIceCandidate(new RTCIceCandidate(snap.val())); });
-    
-                    if (appState.isGameCreator) {
-                        const offer = await appState.peerConnection.createOffer();
-                        await appState.peerConnection.setLocalDescription(offer);
-                        db.ref(`games/${appState.currentGameId}/offer`).set({ sdp: offer.sdp, type: offer.type });
-                        db.ref(`games/${appState.currentGameId}/answer`).on('value', async snap => { if(snap.exists() && !appState.peerConnection.currentRemoteDescription) await appState.peerConnection.setRemoteDescription(new RTCSessionDescription(snap.val())); });
-                    } else {
-                         db.ref(`games/${appState.currentGameId}/offer`).on('value', async snap => {
-                            if(snap.exists() && !appState.peerConnection.currentRemoteDescription) {
-                                await appState.peerConnection.setRemoteDescription(new RTCSessionDescription(snap.val()));
-                                const answer = await appState.peerConnection.createAnswer();
-                                await appState.peerConnection.setLocalDescription(answer);
-                                db.ref(`games/${appState.currentGameId}/answer`).set({ sdp: answer.sdp, type: answer.type });
-                            }
-                        });
+            listenForInvitations: (uid) => {
+                const invitationsRef = db.ref(`invitations/${uid}`);
+                invitationsRef.on('child_added', ui.showInvitationModal);
+                // MEJORA: Limpiar modal si una invitación es cancelada por el host
+                invitationsRef.on('child_removed', (snap) => {
+                    const invitation = snap.val();
+                    if (invitation && document.getElementById('invitation-modal')) {
+                        ui.hideModal();
                     }
-                } catch (e) {
-                    console.error("WebRTC start failed:", e);
-                    alert("Could not access camera/microphone. Please check permissions.");
-                    game.leave();
-                }
-            },
-            stop: () => {
-                if (appState.localStream) appState.localStream.getTracks().forEach(track => track.stop());
-                if (appState.peerConnection) appState.peerConnection.close();
-                dom.localVideo.srcObject = null;
-                dom.remoteVideo.srcObject = null;
-                appState.localStream = null;
-                appState.peerConnection = null;
+                });
             }
         };
         
-        // --- GAME MANAGER (REBUILT FOR ROBUSTNESS) ---
+        // --- WEBRTC MANAGER (Reconstruido con SimplePeer) ---
+        const webrtc = {
+            start: async () => {
+                try {
+                    appState.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    dom.localVideo.srcObject = appState.localStream;
+                } catch (e) {
+                    console.error("WebRTC start failed:", e);
+                    alert("Could not access camera/microphone. Please check permissions and refresh.");
+                    game.leave();
+                    return;
+                }
+
+                appState.peer = new SimplePeer({
+                    initiator: appState.isGameCreator,
+                    stream: appState.localStream,
+                    trickle: false // Simplifica la señalización
+                });
+
+                const signalRef = db.ref(`games/${appState.currentGameId}/signals`);
+
+                appState.peer.on('signal', data => {
+                    // Envía nuestra señal al otro jugador
+                    const signalKey = appState.isGameCreator ? 'p1Signal' : 'p2Signal';
+                    signalRef.child(signalKey).set(JSON.stringify(data));
+                });
+                
+                appState.peer.on('stream', stream => {
+                    // Recibimos el video del otro jugador
+                    dom.remoteVideo.srcObject = stream;
+                });
+
+                appState.peer.on('close', () => game.leave());
+                appState.peer.on('error', (err) => {
+                    console.error('Peer error', err);
+                    game.leave();
+                });
+
+                // Escuchamos la señal del otro jugador para conectar
+                const opponentSignalKey = appState.isGameCreator ? 'p2Signal' : 'p1Signal';
+                signalRef.child(opponentSignalKey).on('value', snap => {
+                    if (snap.exists() && !appState.peer.destroyed && !appState.peer.connected) {
+                        appState.peer.signal(JSON.parse(snap.val()));
+                    }
+                });
+            },
+            stop: () => {
+                if (appState.localStream) {
+                    appState.localStream.getTracks().forEach(track => track.stop());
+                }
+                if (appState.peer) {
+                    appState.peer.destroy();
+                }
+                dom.localVideo.srcObject = null;
+                dom.remoteVideo.srcObject = null;
+                appState.localStream = null;
+                appState.peer = null;
+            }
+        };
+        
+        // --- GAME MANAGER ---
         const game = {
             init: () => {
                 dom.controlButtons.forEach(btn => {
@@ -783,26 +803,16 @@
                 const invitationKey = invitationRef.key;
 
                 gameRef.set(gameData).then(() => {
-                    invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName });
+                    invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName, invitationKey });
                     ui.showWaitingModal(opponentName, gameId, opponentId, invitationKey);
                     
                     appState.invitationTimeout = setTimeout(() => game.cancelInvitation(gameId, opponentId, invitationKey, "Invitation timed out."), 30000);
 
                     appState.activeInvitationListener = gameRef.on('value', snap => {
+                        if (!snap.exists()) return; // Si no existe, el listener de cancelación se encargará.
                         const updatedGameData = snap.val();
-                        if (!updatedGameData) {
-                            if (appState.activeInvitationListener) {
-                                gameRef.off('value', appState.activeInvitationListener);
-                                appState.activeInvitationListener = null;
-                                clearTimeout(appState.invitationTimeout);
-                                ui.hideModal();
-                                alert("Invitation was declined or cancelled.");
-                            }
-                            return;
-                        }
                         if (updatedGameData.status === 'active') {
                             gameRef.off('value', appState.activeInvitationListener);
-                            appState.activeInvitationListener = null;
                             clearTimeout(appState.invitationTimeout);
                             ui.hideModal();
                             game.join(gameId, true);
@@ -811,50 +821,47 @@
                 });
             },
             cancelInvitation: (gameId, opponentId, invitationKey, reason = null) => {
-                 db.ref(`games/${gameId}`).remove();
+                 clearTimeout(appState.invitationTimeout);
+                 const gameRef = db.ref(`games/${gameId}`);
+                 if (appState.activeInvitationListener) {
+                    gameRef.off('value', appState.activeInvitationListener);
+                 }
+                 gameRef.remove();
                  if (opponentId && invitationKey) {
                     db.ref(`invitations/${opponentId}/${invitationKey}`).remove();
                  }
+                 ui.hideModal();
                  if (reason) alert(reason);
             },
             declineInvitation: (gameId, invitationRef) => {
                  db.ref(`games/${gameId}`).remove();
                  if(invitationRef) invitationRef.remove();
             },
-            acceptInvitation: async (gameId, invitationRef) => { // <-- MAJOR FIX: Rewritten for robustness
+            acceptInvitation: async (gameId, invitationRef) => {
                 const gameRef = db.ref(`games/${gameId}`);
                 try {
-                    // Step 1: Pre-flight check. See if the game even exists before trying a transaction.
                     const gameSnap = await gameRef.once('value');
                     if (!gameSnap.exists() || gameSnap.val().status !== 'pending') {
                         alert("Failed to join game. It has been cancelled or already started.");
-                        if (invitationRef) invitationRef.remove(); // Clean up stale invite
+                        if (invitationRef) invitationRef.remove();
                         return;
                     }
                     
-                    const gameDataForCheck = gameSnap.val();
-
-                    // Step 2: Check if the acceptor has enough money.
-                    const walletSnap = await db.ref(`users/${appState.currentUser.uid}/wallet`).once('value');
-                    const myWallet = walletSnap.val();
-
-                    if (myWallet < gameDataForCheck.bet) {
+                    if (appState.currentUserProfile.wallet < gameSnap.val().bet) {
                         alert("You don't have enough coins for this challenge!");
-                        game.declineInvitation(gameId, invitationRef); // Formally decline
+                        game.declineInvitation(gameId, invitationRef);
                         return;
                     }
 
-                    // Step 3: Run the transaction.
                     const result = await gameRef.transaction(currentData => {
                         if (currentData && currentData.status === 'pending') {
                             currentData.status = 'active';
-                            currentData.players.p2.wallet = myWallet;
+                            currentData.players.p2.wallet = appState.currentUserProfile.wallet;
                             return currentData;
                         }
-                        return; // Abort if state changed
+                        return;
                     });
 
-                    // Step 4: Handle the result.
                     if (result.committed) {
                         if (invitationRef) invitationRef.remove();
                         game.join(gameId, false);
@@ -863,11 +870,7 @@
                     }
                 } catch (error) {
                     console.error("Error accepting invitation:", error);
-                    if (error.code === 'PERMISSION_DENIED') {
-                        alert("Failed to join game. Permission denied. Please check database security rules.");
-                    } else {
-                        alert("An unexpected error occurred while joining the game.");
-                    }
+                    alert("An unexpected error occurred while joining the game.");
                 }
             },
             join: (gameId, isCreator) => {
@@ -882,8 +885,8 @@
             },
             stateMachine: (gameData) => {
                 if (!gameData) {
-                    if (appState.currentGameId) {
-                         // alert("The game has ended or the opponent disconnected.");
+                    if (appState.currentGameId) { // Only show alert if we were actually in a game
+                        alert("The game has ended or the opponent disconnected.");
                     }
                     game.leave();
                     return;
@@ -894,7 +897,15 @@
                 switch (gameData.status) {
                     case 'active':
                         ui.hideGameStatus();
-                        if (appState.isGameCreator) game.startCountdown();
+                        if (appState.isGameCreator) { // Only creator starts the countdown
+                             // Check if both players have signals before starting countdown
+                            db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
+                                const signals = snap.val();
+                                if(signals && signals.p1Signal && signals.p2Signal) {
+                                     game.startCountdown();
+                                }
+                            });
+                        }
                         break;
                     case 'countdown':
                         game.handleCountdown(gameData);
@@ -918,16 +929,8 @@
             },
             startCountdown: () => {
                  const gameRef = db.ref(`games/${appState.currentGameId}`);
-                 gameRef.transaction(gameData => {
-                    if (gameData && gameData.status === 'active') {
-                        gameData.status = 'countdown';
-                        gameData.countdown = 3;
-                        return gameData;
-                    }
-                    return;
-                }).then(result => {
-                    if (!result.committed) return;
-                    let count = 2;
+                 gameRef.child('status').set('countdown').then(() => {
+                    let count = 3;
                     const interval = setInterval(() => {
                         db.ref(`games/${appState.currentGameId}/countdown`).set(count);
                         if (count < 0) {
@@ -936,7 +939,7 @@
                         }
                         count--;
                     }, 1000);
-                });
+                 });
             },
             handleCountdown: (gameData) => {
                 const count = gameData.countdown;
@@ -954,16 +957,11 @@
             submitChoice: () => {
                 if(!appState.currentGameId || !appState.playerChoice) return;
                 const playerKey = appState.isGameCreator ? 'p1' : 'p2';
-                const choiceRef = db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`);
-                choiceRef.set(appState.playerChoice).then(() => {
-                    // After setting choice, check if opponent has also chosen
+                db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
                     db.ref(`games/${appState.currentGameId}/players`).once('value', (snap) => {
                         const players = snap.val();
-                        if (players.p1.choice && players.p2.choice) {
-                            // If both have chosen, the creator triggers the reveal
-                            if (appState.isGameCreator) {
-                                db.ref(`games/${appState.currentGameId}/status`).set('reveal');
-                            }
+                        if (players.p1.choice && players.p2.choice && appState.isGameCreator) {
+                            db.ref(`games/${appState.currentGameId}/status`).set('reveal');
                         }
                     });
                 });
@@ -989,17 +987,16 @@
                     } else {
                         resultText = "You Lose!"; resultType = "lose"; sounds.play('lose');
                     }
-                    ui.showGameStatus(resultText, resultType, 4000); // Show result for 4 seconds
+                    ui.showGameStatus(resultText, resultType, 4000);
                 }, 2000);
                 
                 if (appState.isGameCreator) {
-                    // Use a transaction to ensure we only update wallets and status once
                     db.ref(`games/${appState.currentGameId}`).transaction(currentData => {
                         if (currentData && currentData.status === 'reveal') {
                              currentData.status = 'finished';
                              return currentData;
                         }
-                        return; // Abort
+                        return;
                     }).then(result => {
                         if (result.committed) {
                             game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
@@ -1034,8 +1031,6 @@
                 document.getElementById('exit-game-btn').onclick = () => {
                      if (appState.isGameCreator) {
                         db.ref(`games/${appState.currentGameId}`).remove();
-                    } else {
-                        game.leave();
                     }
                 }
             },
