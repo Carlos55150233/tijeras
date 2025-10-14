@@ -35,6 +35,13 @@
         .video-player { width: 50%; background: #111; border: 2px solid var(--metal-dark); border-radius: 8px; overflow: hidden; position: relative; transition: transform 0.3s ease; }
         .video-player video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         .player-name { position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 3px; font-size: 0.7em; }
+        #connection-status-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); color: var(--lose-color); display: none;
+            justify-content: center; align-items: center; font-family: 'Orbitron', sans-serif; z-index: 20; font-weight: bold;
+            animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
         #game-status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-family: 'Orbitron', sans-serif; color: var(--glow-color); text-shadow: 0 0 15px var(--glow-color); z-index: 10; pointer-events: none;}
         #countdown { font-size: 6em; font-weight: 700; }
         #result-text { font-size: 2.5em; font-weight: 700; text-transform: uppercase; animation: fadeInZoom 0.5s ease-out; }
@@ -76,6 +83,7 @@
                 <span id="player2-info">JUGADOR 2: ---</span>
             </div>
             <div id="video-container">
+                <div id="connection-status-overlay">Conexión Inestable...</div>
                 <div class="video-player"><video id="localVideo" autoplay muted playsinline></video><span class="player-name">Tú</span></div>
                 <div class="video-player"><video id="remoteVideo" autoplay playsinline></video><span id="remotePlayerName" class="player-name">Oponente</span></div>
             </div>
@@ -110,7 +118,7 @@
             <p>Bienvenido, <b id="user-email"></b></p>
             <p>Monedas: 🪙<b id="user-coins">0</b></p>
             <hr style="width: 80%; border-color: var(--metal-light);">
-            <h3>Usuarios en Línea</h3>
+            <h3>Usuarios Disponibles</h3>
             <ul id="online-users-list"><li>Buscando jugadores...</li></ul>
             <div id="transaction-history"></div>
             <button id="logout-btn">Salir</button>
@@ -138,7 +146,7 @@
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
         let currentUser = null, currentGameId = null, localStream, peerConnection;
-        let invitationListener, statusListener, walletListener; // Listeners para limpiar
+        let lobbyListeners = {};
         const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
         const dom = {
@@ -148,12 +156,13 @@
             userEmail: document.getElementById('user-email'), userCoins: document.getElementById('user-coins'), betAmount: document.getElementById('bet-amount'),
             player1Info: document.getElementById('player1-info'), player2Info: document.getElementById('player2-info'), remotePlayerName: document.getElementById('remotePlayerName'),
             transactionHistory: document.getElementById('transaction-history'), loginForm: document.getElementById('login-form'), signupForm: document.getElementById('signup-form'),
-            loginBtn: document.getElementById('login-btn'), signupBtn: document.getElementById('signup-btn'),
+            loginBtn: document.getElementById('login-btn'), signupBtn: document.getElementById('signup-btn'), connectionStatus: document.getElementById('connection-status-overlay'),
         };
         
+        // Usando sonidos cortos para evitar latencia
         const sounds = {
-            click: new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."), // Placeholder
-            countdown: new Audio("data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQQAAAAA"),
+            click: new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."), // Placeholder (debes reemplazar con Base64 real si quieres sonido de clic)
+            countdown: new Audio("data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQQAAAAA"), // Silencio corto
             alarm: new Audio("data:audio/wav;base64,UklGRkoBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YUYAAAAA//8CAPwA/AD8AP8A/wD//v8A/AD/AP8A/AD8AP8A/wD/AP8A/wD//v8A//7/AP8A/AD/AP8A/wD//v8A/AD8AP8A/wD/AP8A/wD/"),
             win: new Audio("data:audio/wav;base64,UklGRjQBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YRAAAAAA6u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7g=="),
             lose: new Audio("data:audio/wav;base64,UklGRjABAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQwAAAAA/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+"),
@@ -163,25 +172,22 @@
         ambientHum.loop = true; ambientHum.volume = 0.05;
 
         // --- Lógica Principal ---
-        
         function isMobileDevice() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
 
         auth.onAuthStateChanged(user => {
             if (user) { currentUser = user; ambientHum.play().catch(e => {}); enterLobby(); } 
-            else { currentUser = null; ambientHum.pause(); showScreen('auth'); cleanUpAllListeners(); cleanUpGame(); }
+            else { currentUser = null; ambientHum.pause(); showScreen('auth'); cleanUpLobbyListeners(); cleanUpGame(); }
         });
-
+        
         dom.loginForm.addEventListener('submit', e => {
             e.preventDefault(); setButtonLoading(dom.loginBtn, true, 'Ingresar');
             auth.signInWithEmailAndPassword(dom.loginForm.email.value, dom.loginForm.password.value)
               .catch(err => alert(`Error: ${err.message}`)).finally(() => setButtonLoading(dom.loginBtn, false, 'Ingresar'));
         });
-        
         document.getElementById('google-login-btn').addEventListener('click', () => {
             if (isMobileDevice()) { auth.signInWithRedirect(googleProvider); } 
-            else { auth.signInWithPopup(googleProvider).catch(err => alert(`Error de inicio de sesión con Google: ${err.message}`)); }
+            else { auth.signInWithPopup(googleProvider).catch(err => alert(`Error de Google: ${err.message}`)); }
         });
-
         dom.signupForm.addEventListener('submit', e => {
             e.preventDefault(); setButtonLoading(dom.signupBtn, true, 'Crear Cuenta');
             auth.createUserWithEmailAndPassword(dom.signupForm['signup-email'].value, dom.signupForm['signup-password'].value)
@@ -192,56 +198,37 @@
         document.getElementById('show-signup').addEventListener('click', () => showScreen('signup'));
         document.getElementById('show-login').addEventListener('click', () => showScreen('auth'));
         
-        function cleanUpAllListeners() {
-            if (invitationListener) invitationListener.off();
-            if (statusListener) statusListener.off();
-            if (walletListener) walletListener.off();
-        }
-
-        function setButtonLoading(button, isLoading, originalText) {
-            button.disabled = isLoading;
-            button.textContent = isLoading ? 'Procesando...' : originalText;
-        }
-
-        function showScreen(screenName) {
-            ['auth', 'signup', 'lobby'].forEach(s => dom[s].classList.remove('active'));
-            if (dom[screenName]) dom[screenName].classList.add('active');
-        }
+        function setButtonLoading(button, isLoading, originalText) { button.disabled = isLoading; button.textContent = isLoading ? 'Procesando...' : originalText; }
+        function cleanUpLobbyListeners() { Object.values(lobbyListeners).forEach(ref => ref.off()); lobbyListeners = {}; }
+        function showScreen(screenName) { ['auth', 'signup', 'lobby'].forEach(s => dom[s].classList.remove('active')); if (dom[screenName]) dom[screenName].classList.add('active'); }
 
         async function enterLobby() {
-            cleanUpAllListeners();
-            showScreen('lobby'); dom.userEmail.textContent = currentUser.email.split('@')[0];
+            cleanUpLobbyListeners(); showScreen('lobby'); dom.userEmail.textContent = currentUser.email.split('@')[0];
             const userStatusRef = db.ref(`status/${currentUser.uid}`);
-            await userStatusRef.set({ online: true, email: currentUser.email });
+            await userStatusRef.set({ online: true, email: currentUser.email, inGame: false });
             userStatusRef.onDisconnect().remove();
 
-            statusListener = db.ref('status');
-            statusListener.on('value', snapshot => {
+            lobbyListeners.status = db.ref('status');
+            lobbyListeners.status.on('value', snapshot => {
                 dom.onlineUsersList.innerHTML = ''; let onlineCount = 0;
                 snapshot.forEach(child => {
                     const user = child.val(); const uid = child.key;
                     if (user.online && !user.inGame && uid !== currentUser.uid) {
-                        onlineCount++;
-                        const li = document.createElement('li');
+                        onlineCount++; const li = document.createElement('li');
                         li.innerHTML = `<span>${user.email.split('@')[0]}</span> <button>Invitar</button>`;
                         li.querySelector('button').onclick = () => invitePlayer(uid, user.email);
                         dom.onlineUsersList.appendChild(li);
                     }
                 });
-                if(onlineCount === 0) dom.onlineUsersList.innerHTML = '<li>No hay otros jugadores disponibles.</li>';
+                if(onlineCount === 0) dom.onlineUsersList.innerHTML = '<li>No hay jugadores disponibles.</li>';
             });
             
-            walletListener = db.ref(`wallets/${currentUser.uid}`);
-            walletListener.on('value', snapshot => {
+            lobbyListeners.wallet = db.ref(`wallets/${currentUser.uid}`);
+            lobbyListeners.wallet.on('value', snapshot => {
                 const wallet = snapshot.val();
                 if(wallet) {
-                    dom.userCoins.textContent = wallet.coins || 0;
-                    dom.transactionHistory.innerHTML = '<h4>Historial Reciente</h4>';
-                    if(wallet.history) {
-                        Object.values(wallet.history).reverse().slice(0, 5).forEach(entry => {
-                            const p = document.createElement('p'); p.style.margin = '2px 0'; p.textContent = entry; dom.transactionHistory.appendChild(p);
-                        });
-                    }
+                    dom.userCoins.textContent = wallet.coins || 0; dom.transactionHistory.innerHTML = '<h4>Historial Reciente</h4>';
+                    if(wallet.history) { Object.values(wallet.history).reverse().slice(0, 5).forEach(entry => { const p = document.createElement('p'); p.style.margin = '2px 0'; p.textContent = entry; dom.transactionHistory.appendChild(p); }); }
                 }
             });
             listenForInvitations();
@@ -253,58 +240,47 @@
             db.ref(`wallets/${currentUser.uid}/coins`).once('value', snapshot => {
                 if (snapshot.val() < bet) return alert("No tienes suficientes monedas.");
                 const gameId = db.ref('games').push().key;
-                db.ref(`games/${gameId}`).set({
-                    p1: { uid: currentUser.uid, email: currentUser.email }, p2: { uid: opponentId, email: opponentEmail },
-                    bet, status: 'pending', createdAt: firebase.database.ServerValue.TIMESTAMP
-                });
+                const gameRef = db.ref(`games/${gameId}`);
+                gameRef.set({ p1: { uid: currentUser.uid, email: currentUser.email }, p2: { uid: opponentId, email: opponentEmail }, bet, status: 'pending' });
+                gameRef.onDisconnect().remove();
                 joinGame(gameId);
             });
         }
 
         function listenForInvitations() {
-            invitationListener = db.ref('games').orderByChild('p2/uid').equalTo(currentUser.uid);
-            invitationListener.on('child_added', snapshot => {
+            const invitationsRef = db.ref('games').orderByChild('p2/uid').equalTo(currentUser.uid);
+            lobbyListeners.invitations = invitationsRef;
+            invitationsRef.on('child_added', snapshot => {
                 const game = snapshot.val();
                 if (game && game.status === 'pending') {
-                    if (confirm(`${game.p1.email.split('@')[0]} te ha invitado a jugar por ${game.bet} monedas. ¿Aceptar?`)) {
-                        db.ref(`wallets/${currentUser.uid}/coins`).once('value', walletSnap => {
-                            if (walletSnap.val() < game.bet) { alert("No tienes suficientes monedas."); snapshot.ref.remove(); } 
-                            else { snapshot.ref.update({ status: 'accepted' }); joinGame(snapshot.key); }
-                        });
+                    if (confirm(`${game.p1.email.split('@')[0]} te invita a jugar por ${game.bet} monedas.`)) {
+                        snapshot.ref.child('p2').update({ email: currentUser.email });
+                        snapshot.ref.update({ status: 'accepted' });
+                        joinGame(snapshot.key);
                     } else { snapshot.ref.remove(); }
                 }
             });
         }
         
         async function joinGame(gameId) {
-            if (currentGameId) return;
-            currentGameId = gameId;
-            cleanUpAllListeners(); // Dejar de escuchar invitaciones y otros
-            db.ref(`status/${currentUser.uid}`).update({ inGame: gameId });
-
-            const mediaStream = await startWebRTC();
-            if(!mediaStream) {
-                alert("No se pudo iniciar el juego porque no se concedieron los permisos de cámara/micrófono.");
-                db.ref(`games/${gameId}`).remove();
-                leaveGame(); return;
-            }
-
+            if (currentGameId) return; currentGameId = gameId;
+            cleanUpLobbyListeners(); db.ref(`status/${currentUser.uid}`).update({ inGame: true });
             const gameRef = db.ref(`games/${gameId}`);
+            gameRef.onDisconnect().remove();
+
+            const mediaStream = await startWebRTC(gameRef);
+            if(!mediaStream) { alert("Error de permisos de cámara."); gameRef.remove(); leaveGame(); return; }
+            showScreen(null);
             
-            // Listener específico para el inicio del juego
-            gameRef.child('status').on('value', async (statusSnapshot) => {
-                if (statusSnapshot.val() === 'accepted') {
-                    gameRef.child('status').off(); // Nos desuscribimos para que no se ejecute de nuevo
-                    
+            const readyRef = gameRef.child('ready');
+            readyRef.child(currentUser.uid).set(true);
+            readyRef.on('value', async (readySnapshot) => {
+                if (readySnapshot.numChildren() === 2) {
+                    readyRef.off();
                     const gameSnapshot = await gameRef.once('value');
                     const game = gameSnapshot.val();
-                    if (!game || !game.p1 || !game.p2) return; // Chequeo de seguridad
-
-                    showScreen(null); // Ocultar lobby/auth
-                    setupGameUI(game);
-                    initiateSignaling(game, gameRef);
-                    attachPersistentGameListeners(game, gameRef);
-                    startCountdown();
+                    if (!game) return;
+                    setupGameUI(game); initiateSignaling(game, gameRef); attachPersistentGameListeners(game, gameRef); startCountdown();
                 }
             });
         }
@@ -320,12 +296,10 @@
         async function initiateSignaling(game, gameRef) {
             const isCaller = game.p1.uid === currentUser.uid;
             const opponentUID = isCaller ? game.p2.uid : game.p1.uid;
-
             if (isCaller) {
                 const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
                 gameRef.child('offer').set({ sdp: offer.sdp, type: offer.type });
             }
-
             gameRef.child(isCaller ? 'answer' : 'offer').on('value', async (sdpSnapshot) => {
                 if (sdpSnapshot.exists() && !peerConnection.remoteDescription) {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdpSnapshot.val()));
@@ -335,19 +309,16 @@
                     }
                 }
             });
-
             gameRef.child('iceCandidates').child(opponentUID).on('child_added', c => { if(c.val()) peerConnection.addIceCandidate(new RTCIceCandidate(c.val())); });
         }
 
         function attachPersistentGameListeners(game, gameRef) {
             const opponentUID = game.p1.uid === currentUser.uid ? game.p2.uid : game.p1.uid;
             db.ref(`status/${opponentUID}`).on('value', (statusSnap) => {
-                if(!statusSnap.exists() && currentGameId){
-                    alert("El oponente se ha desconectado. ¡Has ganado!");
-                    gameRef.child('result').set(currentUser.uid);
+                if((!statusSnap.exists() || !statusSnap.val().inGame) && currentGameId){
+                    gameRef.child('result').set(currentUser.uid); // Ganas si el otro se va
                 }
             });
-
             gameRef.on('value', snapshot => {
                 const updatedGame = snapshot.val();
                 if (!updatedGame) return;
@@ -380,13 +351,9 @@
             dom.countdown.style.display = 'none';
             let resultText;
             const p1Name = game.p1.email.split('@')[0]; const p2Name = game.p2.email.split('@')[0];
-
             if (game.result === 'draw') { resultText = 'EMPATE'; dom.resultText.style.color = 'var(--draw-color)'; sounds.draw.play(); } 
             else if (game.result === currentUser.uid) { resultText = '¡GANASTE!'; dom.resultText.style.color = 'var(--win-color)'; sounds.win.play(); } 
-            else { 
-                const winnerName = game.result === game.p1.uid ? p1Name : p2Name;
-                resultText = `GANA ${winnerName.toUpperCase()}`; dom.resultText.style.color = 'var(--lose-color)'; sounds.lose.play(); 
-            }
+            else { const winnerName = game.result === game.p1.uid ? p1Name : p2Name; resultText = `GANA ${winnerName.toUpperCase()}`; dom.resultText.style.color = 'var(--lose-color)'; sounds.lose.play(); }
             dom.resultText.textContent = resultText;
             const p1Choice = game.choices[game.p1.uid] || '...'; const p2Choice = game.choices[game.p2.uid] || '...';
             dom.player1Info.textContent = `${p1Name}: ${p1Choice.charAt(0).toUpperCase()}`;
@@ -413,15 +380,12 @@
         }
         
         function leaveGame(shouldRemoveGame = false) {
-            if(currentUser) db.ref(`status/${currentUser.uid}`).update({ inGame: false });
-            if(currentGameId) { 
+            if (currentUser) db.ref(`status/${currentUser.uid}`).update({ inGame: false });
+            if (currentGameId) { 
                 db.ref(`games/${currentGameId}`).off(); 
-                if (shouldRemoveGame) {
-                    db.ref(`games/${currentGameId}`).remove(); // Limpia la partida de la base de datos
-                }
+                if (shouldRemoveGame) db.ref(`games/${currentGameId}`).remove();
             }
-            cleanUpGame(); 
-            enterLobby();
+            cleanUpGame(); enterLobby();
         }
 
         function cleanUpGame(){
@@ -430,17 +394,25 @@
             dom.remoteVideo.srcObject = null; dom.localVideo.srcObject = null;
             dom.resultText.textContent = ''; dom.countdown.textContent = '';
             dom.controls.forEach(btn => btn.classList.add('disabled'));
+            dom.connectionStatus.style.display = 'none';
             currentGameId = null;
         }
 
-        async function startWebRTC() {
+        async function startWebRTC(gameRef) {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 dom.localVideo.srcObject = localStream;
                 peerConnection = new RTCPeerConnection(servers);
+                peerConnection.onconnectionstatechange = () => {
+                    const state = peerConnection.connectionState;
+                    if (state === 'disconnected' || state === 'failed') {
+                        dom.connectionStatus.style.display = 'flex';
+                        // Si la conexión falla completamente, el otro jugador lo detectará y ganará por el status listener
+                    } else if (state === 'connected') { dom.connectionStatus.style.display = 'none'; }
+                };
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 peerConnection.ontrack = e => { if (dom.remoteVideo.srcObject !== e.streams[0]) dom.remoteVideo.srcObject = e.streams[0]; };
-                peerConnection.onicecandidate = e => { if (e.candidate && currentGameId) db.ref(`games/${currentGameId}/iceCandidates/${currentUser.uid}`).push(e.candidate.toJSON()); };
+                peerConnection.onicecandidate = e => { if (e.candidate && currentGameId) gameRef.child('iceCandidates').child(currentUser.uid).push(e.candidate.toJSON()); };
                 return localStream;
             } catch (e) { console.error("Error al obtener media:", e); return null; }
         }
