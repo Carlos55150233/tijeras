@@ -568,11 +568,11 @@
                 document.getElementById('cancel-challenge-btn').onclick = ui.hideModal;
             },
             showInvitationModal: (invitationSnap) => {
-                if (document.getElementById('invitation-modal')) return; // Avoid showing multiple
+                if (document.getElementById('invitation-modal')) return;
                 const invitation = invitationSnap.val();
+                if (!invitation) return; 
                 const invitationRef = invitationSnap.ref;
 
-                // FIX: Add a listener to the game object to auto-remove the modal if the game is cancelled
                 const gameRef = db.ref(`games/${invitation.gameId}`);
                 const gameListener = gameRef.on('value', gameSnap => {
                     if (!gameSnap.exists()) {
@@ -592,19 +592,15 @@
                     </div>
                 `;
                 dom.modalContainer.innerHTML = modalHTML;
+                
                 document.getElementById('accept-challenge-btn').onclick = () => {
-                    gameRef.off('value', gameListener); // Clean up listener
-                    if (appState.currentUserProfile.wallet >= invitation.bet) {
-                        game.acceptInvitation(invitation.gameId, invitationRef);
-                        ui.hideModal();
-                    } else {
-                        alert("You don't have enough coins to accept this challenge!");
-                        game.declineInvitation(invitation.gameId, invitationRef);
-                        ui.hideModal();
-                    }
+                    gameRef.off('value', gameListener);
+                    game.acceptInvitation(invitation.gameId, invitationRef);
+                    ui.hideModal(); // Hide modal immediately to prevent double-clicks
                 };
+
                 document.getElementById('decline-challenge-btn').onclick = () => {
-                    gameRef.off('value', gameListener); // Clean up listener
+                    gameRef.off('value', gameListener);
                     game.declineInvitation(invitation.gameId, invitationRef);
                     ui.hideModal();
                 };
@@ -777,24 +773,24 @@
                     status: 'pending',
                     players: {
                         p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null },
-                        p2: { uid: opponentId, displayName: opponentName, choice: null } // Wallet will be fetched on join
+                        p2: { uid: opponentId, displayName: opponentName, choice: null }
                     },
                     createdAt: firebase.database.ServerValue.TIMESTAMP,
                 };
 
                 const gameRef = db.ref(`games/${gameId}`);
-                const invitationRef = db.ref(`invitations/${opponentId}`).push(); // FIX: Get ref with key
+                const invitationRef = db.ref(`invitations/${opponentId}`).push();
                 const invitationKey = invitationRef.key;
 
                 gameRef.set(gameData).then(() => {
                     invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName });
-                    ui.showWaitingModal(opponentName, gameId, opponentId, invitationKey); // FIX: Pass IDs for cancellation
+                    ui.showWaitingModal(opponentName, gameId, opponentId, invitationKey);
                     
-                    appState.invitationTimeout = setTimeout(() => game.cancelInvitation(gameId, opponentId, invitationKey, "Invitation timed out."), 30000); // FIX: Pass IDs to timeout
+                    appState.invitationTimeout = setTimeout(() => game.cancelInvitation(gameId, opponentId, invitationKey, "Invitation timed out."), 30000);
 
                     appState.activeInvitationListener = gameRef.on('value', snap => {
                         const updatedGameData = snap.val();
-                        if (!updatedGameData) { // Game was declined/cancelled
+                        if (!updatedGameData) {
                             if (appState.activeInvitationListener) {
                                 gameRef.off('value', appState.activeInvitationListener);
                                 appState.activeInvitationListener = null;
@@ -804,7 +800,7 @@
                             }
                             return;
                         }
-                        if (updatedGameData.status === 'active') { // Opponent accepted
+                        if (updatedGameData.status === 'active') {
                             gameRef.off('value', appState.activeInvitationListener);
                             appState.activeInvitationListener = null;
                             clearTimeout(appState.invitationTimeout);
@@ -814,39 +810,65 @@
                     });
                 });
             },
-            cancelInvitation: (gameId, opponentId, invitationKey, reason = null) => { // FIX: Accept IDs to remove invitation
+            cancelInvitation: (gameId, opponentId, invitationKey, reason = null) => {
                  db.ref(`games/${gameId}`).remove();
                  if (opponentId && invitationKey) {
                     db.ref(`invitations/${opponentId}/${invitationKey}`).remove();
                  }
-                 // The listener in sendInvitation will handle the UI cleanup for the sender.
                  if (reason) alert(reason);
             },
             declineInvitation: (gameId, invitationRef) => {
                  db.ref(`games/${gameId}`).remove();
                  if(invitationRef) invitationRef.remove();
             },
-            acceptInvitation: (gameId, invitationRef) => {
+            acceptInvitation: async (gameId, invitationRef) => { // <-- MAJOR FIX: Rewritten for robustness
                 const gameRef = db.ref(`games/${gameId}`);
-                db.ref(`users/${appState.currentUser.uid}/wallet`).once('value', (snap) => {
-                    const myWallet = snap.val();
-                    gameRef.transaction(gameData => {
-                        if (gameData && gameData.status === 'pending') {
-                            gameData.status = 'active';
-                            gameData.players.p2.wallet = myWallet; // Add acceptor's wallet info
-                            return gameData;
+                try {
+                    // Step 1: Pre-flight check. See if the game even exists before trying a transaction.
+                    const gameSnap = await gameRef.once('value');
+                    if (!gameSnap.exists() || gameSnap.val().status !== 'pending') {
+                        alert("Failed to join game. It has been cancelled or already started.");
+                        if (invitationRef) invitationRef.remove(); // Clean up stale invite
+                        return;
+                    }
+                    
+                    const gameDataForCheck = gameSnap.val();
+
+                    // Step 2: Check if the acceptor has enough money.
+                    const walletSnap = await db.ref(`users/${appState.currentUser.uid}/wallet`).once('value');
+                    const myWallet = walletSnap.val();
+
+                    if (myWallet < gameDataForCheck.bet) {
+                        alert("You don't have enough coins for this challenge!");
+                        game.declineInvitation(gameId, invitationRef); // Formally decline
+                        return;
+                    }
+
+                    // Step 3: Run the transaction.
+                    const result = await gameRef.transaction(currentData => {
+                        if (currentData && currentData.status === 'pending') {
+                            currentData.status = 'active';
+                            currentData.players.p2.wallet = myWallet;
+                            return currentData;
                         }
-                        return; // Abort if not pending
-                    }).then(result => {
-                        if (result.committed) {
-                            if(invitationRef) invitationRef.remove();
-                            game.join(gameId, false);
-                        } else {
-                            alert("Failed to join game. It might have been cancelled.");
-                            ui.hideModal();
-                        }
+                        return; // Abort if state changed
                     });
-                });
+
+                    // Step 4: Handle the result.
+                    if (result.committed) {
+                        if (invitationRef) invitationRef.remove();
+                        game.join(gameId, false);
+                    } else {
+                        alert("Failed to join game. The host may have cancelled it at the last second.");
+                    }
+                } catch (error) {
+                    console.error("Error accepting invitation:", error);
+                    if (error.code === 'PERMISSION_DENIED') {
+                        alert("Failed to join game. Permission denied. Please check database security rules.");
+                    } else {
+                        alert("An unexpected error occurred while joining the game.");
+                    }
+                }
             },
             join: (gameId, isCreator) => {
                 appState.currentGameId = gameId;
@@ -860,7 +882,9 @@
             },
             stateMachine: (gameData) => {
                 if (!gameData) {
-                    if (appState.currentGameId) alert("The game has ended or the opponent disconnected.");
+                    if (appState.currentGameId) {
+                         // alert("The game has ended or the opponent disconnected.");
+                    }
                     game.leave();
                     return;
                 }
@@ -876,7 +900,6 @@
                         game.handleCountdown(gameData);
                         break;
                     case 'choose':
-                        // Only enable buttons if user hasn't chosen yet
                         const myPlayerKey = appState.isGameCreator ? 'p1' : 'p2';
                         if (!gameData.players[myPlayerKey].choice) {
                             ui.resetControlButtons(false);
@@ -887,7 +910,6 @@
                         game.revealResult(gameData);
                         break;
                     case 'finished':
-                        // The creator will show post-game options.
                         if (appState.isGameCreator && !document.querySelector('.modal')) {
                             game.showPostGameOptions();
                         }
@@ -910,23 +932,6 @@
                         db.ref(`games/${appState.currentGameId}/countdown`).set(count);
                         if (count < 0) {
                             clearInterval(interval);
-                             // Server-less check for both players' choices
-                            const gameRef = db.ref(`games/${appState.currentGameId}`);
-                            gameRef.on('value', function onChoice(snap) {
-                                const gameData = snap.val();
-                                if (!gameData) {
-                                    gameRef.off('value', onChoice);
-                                    return;
-                                }
-                                const p1Choice = gameData.players?.p1?.choice;
-                                const p2Choice = gameData.players?.p2?.choice;
-                                if(p1Choice && p2Choice) {
-                                    gameRef.off('value', onChoice);
-                                    if(appState.isGameCreator) {
-                                        game.processGameResult(gameData);
-                                    }
-                                }
-                            });
                             db.ref(`games/${appState.currentGameId}/status`).set('choose');
                         }
                         count--;
@@ -949,31 +954,29 @@
             submitChoice: () => {
                 if(!appState.currentGameId || !appState.playerChoice) return;
                 const playerKey = appState.isGameCreator ? 'p1' : 'p2';
-                db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice);
-                ui.resetControlButtons(true); // Disable all buttons after choice
-            },
-             processGameResult: (gameData) => { // Was part of revealResult
-                const gameRef = db.ref(`games/${appState.currentGameId}`);
-                gameRef.transaction(currentData => {
-                    if (currentData && currentData.status === 'choose') {
-                        currentData.status = 'reveal';
-                        return currentData;
-                    }
-                    return;
-                }).then(async (result) => {
-                    if (!result.committed) return;
-                    const { p1, p2 } = result.snapshot.val().players;
-                    const winnerChoice = game.getWinner(p1.choice, p2.choice);
-                    await game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
-                    db.ref(`games/${appState.currentGameId}/status`).set('finished');
+                const choiceRef = db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`);
+                choiceRef.set(appState.playerChoice).then(() => {
+                    // After setting choice, check if opponent has also chosen
+                    db.ref(`games/${appState.currentGameId}/players`).once('value', (snap) => {
+                        const players = snap.val();
+                        if (players.p1.choice && players.p2.choice) {
+                            // If both have chosen, the creator triggers the reveal
+                            if (appState.isGameCreator) {
+                                db.ref(`games/${appState.currentGameId}/status`).set('reveal');
+                            }
+                        }
+                    });
                 });
+                ui.resetControlButtons(true);
             },
             revealResult: (gameData) => {
                 const { p1, p2 } = gameData.players;
+                if(!p1.choice || !p2.choice) return;
+
                 const myChoice = appState.isGameCreator ? p1.choice : p2.choice;
                 const opponentChoice = appState.isGameCreator ? p2.choice : p1.choice;
                 
-                ui.showGameStatus(`${myChoice?.toUpperCase() || '?'} vs ${opponentChoice?.toUpperCase() || '?'}`);
+                ui.showGameStatus(`${myChoice.toUpperCase()} vs ${opponentChoice.toUpperCase()}`);
 
                 const winnerChoice = game.getWinner(p1.choice, p2.choice);
 
@@ -986,8 +989,23 @@
                     } else {
                         resultText = "You Lose!"; resultType = "lose"; sounds.play('lose');
                     }
-                    ui.showGameStatus(resultText, resultType);
+                    ui.showGameStatus(resultText, resultType, 4000); // Show result for 4 seconds
                 }, 2000);
+                
+                if (appState.isGameCreator) {
+                    // Use a transaction to ensure we only update wallets and status once
+                    db.ref(`games/${appState.currentGameId}`).transaction(currentData => {
+                        if (currentData && currentData.status === 'reveal') {
+                             currentData.status = 'finished';
+                             return currentData;
+                        }
+                        return; // Abort
+                    }).then(result => {
+                        if (result.committed) {
+                            game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
+                        }
+                    });
+                }
             },
             getWinner: (c1, c2) => (c1 === c2) ? null : ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'scissors' && c2 === 'paper') || (c1 === 'paper' && c2 === 'rock')) ? c1 : c2,
             updateWallets: (gameData, winnerChoice, p1Id, p2Id) => {
@@ -1001,7 +1019,7 @@
 
                 return Promise.all([
                     winnerRef.transaction(wallet => (wallet || 0) + bet),
-                    loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet)) // Ensure wallet doesn't go negative
+                    loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet))
                 ]);
             },
             showPostGameOptions: () => {
