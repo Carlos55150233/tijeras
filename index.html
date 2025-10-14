@@ -440,7 +440,6 @@
     <!-- SimplePeer Library -->
     <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
 
-
     <script type="module">
         // --- CONFIGURATION ---
         const firebaseConfig = {
@@ -470,7 +469,9 @@
             isGameCreator: false,
             playerChoice: null,
             activeGameListener: null,
-            activeInvitationListener: null,
+            // --- LÓGICA DE INVITACIÓN RECONSTRUIDA ---
+            pendingInvitation: null, // Objeto para gestionar la invitación enviada
+            activeInvitationListener: null, // Listener para la invitación enviada
         };
 
         // --- DOM ELEMENTS ---
@@ -683,10 +684,7 @@
             onUserConnect: () => {
                 const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
                 db.ref('.info/connected').on('value', snap => {
-                    if (snap.val() === false) {
-                        userStatusRef.set('offline'); // Set status to offline immediately if disconnected
-                        return;
-                    }
+                    if (snap.val() === false) return;
                     userStatusRef.onDisconnect().set('offline').then(() => userStatusRef.set('online'));
                 });
             },
@@ -765,8 +763,7 @@
         
         // --- GAME MANAGER ---
         const game = {
-            // ... (keep init, getWinner, updateWallets, stateMachine parts)
-             init: () => {
+            init: () => {
                 dom.controlButtons.forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         sounds.play('click');
@@ -778,10 +775,14 @@
                 });
                 ui.resetControlButtons(true);
             },
+            
+            // --- LÓGICA DE INVITACIÓN RECONSTRUIDA ---
             sendInvitation: (opponentId, opponentName, bet) => {
                 const gameId = db.ref('games').push().key;
-                appState.currentGameId = gameId; // Set current gameId immediately
-                appState.isGameCreator = true; // Set creator status
+                const invitationKey = db.ref(`invitations/${opponentId}`).push().key; // Usar una clave única
+
+                // Guardar toda la info necesaria para cancelar después
+                appState.pendingInvitation = { gameId, opponentId, invitationKey };
 
                 const gameData = {
                     bet,
@@ -790,68 +791,63 @@
                         p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null },
                         p2: { uid: opponentId, displayName: opponentName, choice: null }
                     },
-                    createdAt: firebase.database.ServerValue.TIMESTAMP,
                 };
 
                 const gameRef = db.ref(`games/${gameId}`);
-                const invitationRef = db.ref(`invitations/${opponentId}/${gameId}`); // Use gameId as key for easy lookup
+                const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
 
                 gameRef.set(gameData).then(() => {
                     invitationRef.set({ gameId, bet, fromName: appState.currentUserProfile.displayName });
                     ui.showWaitingModal(opponentName);
                     
-                    // ROBUSTNESS: If creator disconnects, Firebase auto-removes the game and invitation
+                    // Medida de seguridad: Si el creador se desconecta, se borra todo.
                     gameRef.onDisconnect().remove();
                     invitationRef.onDisconnect().remove();
 
+                    // Escuchar si el juego es aceptado
                     appState.activeInvitationListener = gameRef.on('value', snap => {
-                        if (!snap.exists()) return;
-                        if (snap.val().status === 'active') {
-                            game.cleanUpInvitationListeners(); // Clean up everything before joining
+                        if (snap.exists() && snap.val().status === 'active') {
+                            game.cleanUpInvitationListeners();
                             game.join(gameId, true);
                         }
                     });
                 });
             },
+
             cancelInvitation: () => {
-                const gameRef = db.ref(`games/${appState.currentGameId}`);
-                const gameData = game.getGameDataFromListener(); // Helper to get opponentId
-                if (gameData) {
-                    const opponentId = gameData.players.p2.uid;
-                    db.ref(`invitations/${opponentId}/${appState.currentGameId}`).remove();
-                }
-                gameRef.remove();
+                if (!appState.pendingInvitation) return;
+                const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
+                
+                db.ref(`games/${gameId}`).remove();
+                db.ref(`invitations/${opponentId}/${invitationKey}`).remove();
+                
                 game.cleanUpInvitationListeners();
                 ui.hideModal();
             },
+
             cleanUpInvitationListeners: () => {
-                if (appState.activeInvitationListener && appState.currentGameId) {
-                    const gameRef = db.ref(`games/${appState.currentGameId}`);
-                    gameRef.off('value', appState.activeInvitationListener);
-                    // Cancel the onDisconnect handlers since the game is proceeding
-                    gameRef.onDisconnect().cancel();
-                    const gameData = game.getGameDataFromListener();
-                     if (gameData) {
-                        const opponentId = gameData.players.p2.uid;
-                        db.ref(`invitations/${opponentId}/${appState.currentGameId}`).onDisconnect().cancel();
-                    }
-                }
-                appState.activeInvitationListener = null;
-            },
-             getGameDataFromListener: () => {
-                // A helper might be needed if you can't access game data directly
-                // For simplicity, we assume you can get opponentId, but a better way is to store it
-                // in appState when the invitation is created. Let's add that.
+                if (!appState.pendingInvitation) return;
+                const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
+                const gameRef = db.ref(`games/${gameId}`);
+                const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
+                
                 if (appState.activeInvitationListener) {
-                   // This is a simplified placeholder. In a real app, you'd fetch this.
-                   // Let's modify sendInvitation to store this.
+                    gameRef.off('value', appState.activeInvitationListener);
                 }
-                return null;
+                
+                // Cancelar las operaciones de desconexión porque la invitación se resolvió (aceptada o cancelada)
+                gameRef.onDisconnect().cancel();
+                invitationRef.onDisconnect().cancel();
+                
+                appState.activeInvitationListener = null;
+                appState.pendingInvitation = null;
             },
+
             declineInvitation: (gameId, invitationRef) => {
                  db.ref(`games/${gameId}`).remove();
                  if(invitationRef) invitationRef.remove();
             },
+
             acceptInvitation: async (gameId, invitationRef) => {
                 const gameRef = db.ref(`games/${gameId}`);
                 try {
@@ -862,7 +858,7 @@
                         return;
                     }
                     if (appState.currentUserProfile.wallet < gameSnap.val().bet) {
-                        alert("You don't have enough coins!");
+                        alert("You don't have enough coins for this challenge!");
                         game.declineInvitation(gameId, invitationRef);
                         return;
                     }
@@ -882,14 +878,17 @@
                     }
                 } catch (error) {
                     console.error("Error accepting invitation:", error);
-                    alert("An unexpected error occurred.");
+                    alert("An unexpected error occurred while joining the game.");
                 }
             },
+            // --- FIN DE LA LÓGICA DE INVITACIÓN ---
+
             join: (gameId, isCreator) => {
                 appState.currentGameId = gameId;
                 appState.isGameCreator = isCreator;
                 dbManager.updateUserStatus('ingame');
                 ui.showScreen(dom.gameScreen);
+                ui.hideModal(); // Asegurarse de que cualquier modal se oculte
                 webrtc.start();
 
                 const gameRef = db.ref(`games/${gameId}`);
@@ -939,15 +938,14 @@
             },
             startCountdown: () => {
                 const gameRef = db.ref(`games/${appState.currentGameId}`);
-                // Use a transaction to prevent starting the countdown multiple times
                 gameRef.transaction(currentData => {
                     if (currentData && currentData.status === 'active') {
                         currentData.status = 'countdown';
                         return currentData;
                     }
-                    return; // Abort if not active
+                    return;
                 }).then(result => {
-                    if (!result.committed) return; // Countdown already started or game changed state
+                    if (!result.committed) return;
                     let count = 3;
                     const interval = setInterval(() => {
                         db.ref(`games/${appState.currentGameId}/countdown`).set(count);
@@ -1060,8 +1058,8 @@
                     db.ref(`games/${appState.currentGameId}`).off('value', appState.activeGameListener);
                 }
                 
-                // Limpia cualquier estado de invitación residual
-                game.cleanUpInvitationListeners(); 
+                // Limpia cualquier estado de invitación residual al salir de un juego
+                if(appState.pendingInvitation) game.cleanUpInvitationListeners(); 
 
                 dbManager.updateUserStatus('online');
                 appState.currentGameId = null;
@@ -1080,7 +1078,7 @@
             game.init();
             window.addEventListener('beforeunload', () => {
                 if (appState.currentUser) {
-                    dbManager.onUserDisconnect(appState.currentUser.uid);
+                    // La lógica onDisconnect de Firebase se encargará de limpiar
                 }
             });
         }
