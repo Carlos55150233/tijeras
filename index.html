@@ -1,671 +1,228 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-<title>Piedra, Papel o Tijeras — Metal Arcade</title>
-<style>
-  /* ========= BASIC RESET ========= */
-  *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,Arial,Helvetica,sans-serif}
-  html,body,#app{height:100%}
-  body{background:linear-gradient(180deg,#0b0b0d,#121214);color:#e9eef6;display:flex;align-items:center;justify-content:center;padding:18px}
+  <meta charset="UTF-8">
+  <title>Piedra Papel Tijeras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: radial-gradient(circle at top, #1b1b1b, #0d0d0d);
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
 
-  /* ========= METAL BOX CONTAINER ========= */
-  .machine{
-    width:360px; max-width:95vw;
-    background:linear-gradient(180deg,#1f2326 0%,#121417 40%,#0b0b0d 100%);
-    border-radius:18px;
-    padding:16px;
-    box-shadow:0 12px 30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.02);
-    border:2px solid rgba(255,255,255,.03);
-    transform:translateZ(0);
-    position:relative;
-    overflow:hidden;
-  }
-  .machine:before{
-    content:""; position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(135deg, rgba(255,255,255,0.02), rgba(0,0,0,0.3));
-    mix-blend-mode:overlay;
-    border-radius:18px;
-  }
+    .machine {
+      margin: 60px auto;
+      width: 340px;
+      background: linear-gradient(145deg, #5e5e5e, #2e2e2e);
+      border: 3px solid #888;
+      border-radius: 18px;
+      box-shadow: inset 0 0 10px #111, 0 0 20px #000;
+      padding: 20px;
+    }
 
-  /* ========= TOP SCREEN (octagonal-ish rectangle) ========= */
-  .screen{
-    margin-bottom:12px;
-    height:190px;
-    background:linear-gradient(180deg,#0b1116,#071014);
-    border-radius:16px;
-    padding:8px;
-    display:flex;flex-direction:column;gap:8px;
-    box-shadow:inset 0 6px 30px rgba(0,0,0,.6);
-    position:relative;
-    overflow:hidden;
-    border:1px solid rgba(255,255,255,.03);
-  }
-  .screen .video-row{display:flex;gap:6px;flex:1}
-  .video{
-    flex:1;
-    border-radius:8px;
-    background:linear-gradient(180deg,#0a0f12,#081014);
-    display:flex;align-items:center;justify-content:center;
-    color:#8aa1b3;font-size:12px;
-    position:relative;overflow:hidden;
-    border:1px solid rgba(255,255,255,.02);
-  }
-  .video video{width:100%;height:100%;object-fit:cover;display:block}
-  .meta{
-    display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 6px;color:#bcd3e6;
-  }
+    .screen {
+      background: #000;
+      border: 3px solid #555;
+      border-radius: 12px;
+      height: 180px;
+      color: #0f0;
+      padding: 10px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      overflow-y: auto;
+    }
 
-  /* ========= CENTRAL TEXT (countdown/result) ========= */
-  .center-display{
-    position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
-    pointer-events:none;font-weight:700;font-size:28px;color:#e6f7ff;text-shadow:0 6px 30px rgba(0,140,255,.06);
-  }
-  .result-badge{background:linear-gradient(90deg,#0b6eff,#00d4ff);padding:8px 12px;border-radius:10px;box-shadow:0 6px 20px rgba(10,120,255,.12)}
+    .btn {
+      background: #444;
+      color: white;
+      border: 2px solid #666;
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      margin: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn:hover { background: #777; }
 
-  /* ========= BOTTOM BUTTONS (three metal buttons) ========= */
-  .controls{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px}
-  .btn{
-    flex:1;
-    background:linear-gradient(180deg,#2b2f33,#121416);
-    border-radius:10px;padding:12px 8px;text-align:center;
-    box-shadow:0 6px 18px rgba(0,0,0,.6), inset 0 -6px 10px rgba(255,255,255,.02);
-    cursor:pointer;user-select:none;border:1px solid rgba(255,255,255,.04);transition:transform .12s,box-shadow .12s;
-    display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;
-  }
-  .btn:active{transform:translateY(3px)}
-  .btn .icon{font-size:20px}
-  .btn .label{font-size:12px;color:#cfe9ff}
-  .btn.selected{box-shadow:0 10px 30px rgba(0,200,150,.14), inset 0 -2px 10px rgba(255,255,255,.02);border:1px solid rgba(0,200,150,.25)}
-  .btn.glow{animation:glowAnim 1.6s infinite}
-  @keyframes glowAnim{0%{box-shadow:0 6px 18px rgba(0,0,0,.6)}50%{box-shadow:0 14px 32px rgba(0,200,150,.12)}100%{box-shadow:0 6px 18px rgba(0,0,0,.6)}}
+    #googleLogin {
+      background: #4285F4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 15px;
+    }
+    #coinsDisplay {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #ffb700;
+    }
 
-  /* ========= INFO/USER AREA ========= */
-  .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .user-card{font-size:13px}
-  .balance{font-weight:700;color:#bff0c6}
-  .small{font-size:11px;color:#98b0c6}
-
-  /* ========= LIST OF ONLINE USERS / INVITES ========= */
-  .sidebar{margin-top:10px;background:linear-gradient(180deg,#071014,#051014);padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.02);font-size:13px}
-  .user-list{max-height:120px;overflow:auto;display:flex;flex-direction:column;gap:6px}
-  .user-item{display:flex;justify-content:space-between;align-items:center;padding:6px;background:rgba(255,255,255,.01);border-radius:8px}
-  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.03);padding:6px 8px;border-radius:8px;color:#cbe9ff;cursor:pointer}
-
-  /* ========= TRANSACTION HISTORY ========= */
-  .history{margin-top:10px;font-size:12px;max-height:90px;overflow:auto;padding:8px;background:rgba(255,255,255,.01);border-radius:8px}
-  .tx{padding:6px;border-bottom:1px dashed rgba(255,255,255,.02)}
-
-  /* responsive tweaks */
-  @media(min-width:560px){
-    .machine{width:420px}
-    .screen{height:240px}
-  }
-</style>
+    #videoContainer {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    video {
+      width: 120px;
+      height: 90px;
+      background: #111;
+      border: 2px solid #444;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
-<div id="app">
-  <div class="machine" role="application" aria-label="Piedra papel tijeras arcade metallic">
-    <div class="top-bar">
-      <div class="user-card">
-        <div id="displayName" class="small">Not signed</div>
-        <div class="balance" id="balance">-- coins</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="signBtn" class="btn-ghost">Sign In</button>
-        <button id="signOutBtn" class="btn-ghost" style="display:none">Sign Out</button>
-      </div>
+  <h2>🎮 Piedra Papel Tijeras</h2>
+  <div class="machine">
+    <div class="screen" id="gameLog">Inicia sesión para jugar...</div>
+
+    <div>
+      <button class="btn" id="piedra">🪨 Piedra</button>
+      <button class="btn" id="papel">📄 Papel</button>
+      <button class="btn" id="tijeras">✂️ Tijeras</button>
     </div>
 
-    <div class="screen" id="screen">
-      <div class="meta">
-        <div id="status">Status: idle</div>
-        <div class="small">Min bet <span id="minBetDisplay">5</span> coins</div>
-      </div>
+    <button id="googleLogin">🔐 Iniciar sesión con Google</button>
+    <p id="coinsDisplay">💰 Coins: --</p>
 
-      <div class="video-row">
-        <div class="video" id="localWrap">
-          <video id="localVideo" autoplay muted playsinline></video>
-        </div>
-        <div class="video" id="remoteWrap">
-          <video id="remoteVideo" autoplay playsinline></video>
-        </div>
-      </div>
-
-      <div class="center-display" id="centerDisplay">
-        <div id="centerText" class="result-badge">Waiting</div>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:8px">
-      <input id="betInput" type="number" min="5" value="5" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2);color:#eaf8ff" />
-      <button id="inviteBtn" class="btn-ghost">Invite</button>
-    </div>
-
-    <div class="controls" style="margin-top:10px">
-      <div class="btn" id="btnRock" data-move="rock"><div class="icon">🪨</div><div class="label">Piedra</div></div>
-      <div class="btn" id="btnPaper" data-move="paper"><div class="icon">📄</div><div class="label">Papel</div></div>
-      <div class="btn" id="btnScissors" data-move="scissors"><div class="icon">✂️</div><div class="label">Tijera</div></div>
-    </div>
-
-    <div class="sidebar">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong>Usuarios activos</strong><button id="refreshList" class="btn-ghost">Refresh</button>
-      </div>
-      <div id="users" class="user-list"></div>
-
-      <div style="margin-top:8px">
-        <small>Invites / Requests</small>
-        <div id="invites"></div>
-      </div>
-
-      <div class="history" id="history">
-        <strong>Historial</strong>
-      </div>
+    <div id="videoContainer">
+      <video id="localVideo" autoplay muted></video>
+      <video id="remoteVideo" autoplay></video>
     </div>
   </div>
-</div>
 
-<!-- Firebase SDK (compat mode for brevity) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref, set, get, child, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-<script>
-/* ================== FIREBASE CONFIG (USAS ESTA) ================== */
-const firebaseConfig = {
-  apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
-  authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
-  databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
-  projectId: "piedra-papel-o-tijeras-5ae53",
-  storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
-  messagingSenderId: "394850327081",
-  appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
-  measurementId: "G-C3VE5H0Y3S"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
-const storage = firebase.storage();
+    const firebaseConfig = {
+      apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
+      authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
+      databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
+      projectId: "piedra-papel-o-tijeras-5ae53",
+      storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
+      messagingSenderId: "394850327081",
+      appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38"
+    };
 
-/* ================== ELEMENTS ================== */
-const signBtn = document.getElementById('signBtn');
-const signOutBtn = document.getElementById('signOutBtn');
-const displayName = document.getElementById('displayName');
-const balanceEl = document.getElementById('balance');
-const usersList = document.getElementById('users');
-const inviteBtn = document.getElementById('inviteBtn');
-const betInput = document.getElementById('betInput');
-const minBetDisplay = document.getElementById('minBetDisplay');
-const centerText = document.getElementById('centerText');
-const statusEl = document.getElementById('status');
-const invitesEl = document.getElementById('invites');
-const historyEl = document.getElementById('history');
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const provider = new GoogleAuthProvider();
 
-const btnRock = document.getElementById('btnRock');
-const btnPaper = document.getElementById('btnPaper');
-const btnScissors = document.getElementById('btnScissors');
+    const btnLogin = document.getElementById('googleLogin');
+    const balanceDisplay = document.getElementById('coinsDisplay');
+    const log = document.getElementById('gameLog');
 
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
+    const btns = {
+      piedra: document.getElementById('piedra'),
+      papel: document.getElementById('papel'),
+      tijeras: document.getElementById('tijeras')
+    };
 
-let localStream = null;
-let pc = null;
-let currentGameId = null;
-let myUid = null;
-let myName = null;
-let myBalance = 0;
-const MIN_BET = 5;
-minBetDisplay.textContent = MIN_BET;
+    let currentUser = null;
+    let gameChoice = null;
 
-/* ================== SOUNDS (simple) ================== */
-function beep(freq=440, time=0.12){
-  const ctx = new (window.AudioContext||window.webkitAudioContext)();
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type = 'sine';
-  o.frequency.value = freq;
-  o.connect(g); g.connect(ctx.destination);
-  o.start(); g.gain.setValueAtTime(0.001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-  setTimeout(()=>{g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + time); o.stop(ctx.currentTime+time+0.02)}, time*1000);
-}
-function alarm(){
-  beep(880,0.14); setTimeout(()=>beep(660,0.12),100);
-}
+    // Iniciar sesión
+    btnLogin.onclick = async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        await checkOrCreateWallet(currentUser);
+        logMessage(`Bienvenido ${currentUser.displayName}`);
+      } catch (e) {
+        alert("Error: " + e.message);
+      }
+    };
 
-/* ================== AUTH ================== */
-signBtn.onclick = async ()=>{
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try{
-    await auth.signInWithPopup(provider);
-  }catch(e){alert('Auth failed: '+e.message)}
-};
-signOutBtn.onclick = ()=>auth.signOut();
+    // Crear monedero si no existe
+    async function checkOrCreateWallet(user) {
+      const dbRef = ref(db);
+      const snapshot = await get(child(dbRef, `wallets/${user.uid}`));
+      if (!snapshot.exists()) {
+        await set(ref(db, `wallets/${user.uid}`), {
+          coins: 100,
+          email: user.email,
+          name: user.displayName
+        });
+      }
+      const userWallet = (await get(child(dbRef, `wallets/${user.uid}`))).val();
+      balanceDisplay.innerText = `💰 Coins: ${userWallet.coins}`;
+    }
 
-auth.onAuthStateChanged(async user=>{
-  if(user){
-    myUid = user.uid;
-    myName = user.displayName || user.email.split('@')[0];
-    displayName.textContent = myName;
-    signBtn.style.display='none'; signOutBtn.style.display='inline-block';
-    await initUserInDb(user);
-    listenOnlineUsers();
-    listenInvites();
-    listenHistory();
-    openLocalStream();
-  }else{
-    myUid = null; myName = null;
-    displayName.textContent = 'Not signed';
-    signBtn.style.display='inline-block'; signOutBtn.style.display='none';
-    usersList.innerHTML=''; invitesEl.innerHTML=''; historyEl.innerHTML='';
-    stopLocalStream();
-  }
-});
+    // Actualizar saldo
+    async function updateCoins(userId, amount) {
+      const userRef = ref(db, `wallets/${userId}/coins`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        const current = snapshot.val();
+        await update(ref(db, `wallets/${userId}`), { coins: current + amount });
+        balanceDisplay.innerText = `💰 Coins: ${current + amount}`;
+      }
+    }
 
-/* create user record if missing */
-async function initUserInDb(user){
-  const ref = db.ref('users/'+user.uid);
-  await ref.update({
-    name: user.displayName||user.email,
-    lastSeen: firebase.database.ServerValue.TIMESTAMP,
-    online:true,
-    balance: firebase.database.ServerValue.exists ? undefined : undefined
-  });
-  // ensure balance exists (read once)
-  const snap = await ref.child('balance').once('value');
-  if(!snap.exists()){
-    await ref.child('balance').set(100); // give demo 100 coins initial
-    myBalance = 100;
-  }else myBalance = snap.val();
-  balanceEl.textContent = myBalance+' coins';
-  // presence handling
-  const presenceRef = db.ref('/status/'+user.uid);
-  await presenceRef.set({online:true,lastSeen:firebase.database.ServerValue.TIMESTAMP});
-  presenceRef.onDisconnect().set({online:false,lastSeen:firebase.database.ServerValue.TIMESTAMP});
-}
-
-/* presence + user list */
-function listenOnlineUsers(){
-  const ref = db.ref('users');
-  ref.on('value', snapshot=>{
-    usersList.innerHTML='';
-    snapshot.forEach(child=>{
-      const u = child.val(); const id = child.key;
-      if(id === myUid) return;
-      const item = document.createElement('div'); item.className='user-item';
-      item.innerHTML = `<div><strong>${u.name||'User'}</strong><div class="small">${u.balance||0} coins</div></div>`;
-      const btn = document.createElement('button'); btn.className='btn-ghost'; btn.textContent='Invite';
-      btn.onclick = ()=>sendInvite(id,u.name);
-      item.appendChild(btn);
-      usersList.appendChild(item);
+    // Lógica de juego simple (modo local)
+    Object.keys(btns).forEach(choice => {
+      btns[choice].onclick = async () => {
+        if (!currentUser) return alert("Inicia sesión primero.");
+        gameChoice = choice;
+        const opciones = ["piedra", "papel", "tijeras"];
+        const rival = opciones[Math.floor(Math.random() * 3)];
+        const resultado = getResult(choice, rival);
+        logMessage(`Tú: ${choice.toUpperCase()} vs Rival: ${rival.toUpperCase()} → ${resultado}`);
+        if (resultado === "GANASTE") await updateCoins(currentUser.uid, +5);
+        if (resultado === "PERDISTE") await updateCoins(currentUser.uid, -5);
+      };
     });
-  });
-}
-document.getElementById('refreshList').onclick = ()=>listenOnlineUsers();
 
-/* ================== INVITE / MATCHMAKING ================== */
-async function sendInvite(targetUid, targetName){
-  if(!myUid){alert('sign in first');return;}
-  const bet = Math.max(MIN_BET, Math.floor(Number(betInput.value) || MIN_BET));
-  // check balance
-  const me = (await db.ref('users/'+myUid+'/balance').once('value')).val() || 0;
-  if(me < bet){alert('Saldo insuficiente'); return;}
-  const inviteRef = db.ref('invites/'+targetUid+'/'+myUid);
-  await inviteRef.set({from:myUid,fromName:myName,bet,ts:firebase.database.ServerValue.TIMESTAMP});
-  alert('Invitación enviada a '+targetName);
-}
+    function getResult(a, b) {
+      if (a === b) return "EMPATE";
+      if (
+        (a === "piedra" && b === "tijeras") ||
+        (a === "papel" && b === "piedra") ||
+        (a === "tijeras" && b === "papel")
+      ) return "GANASTE";
+      return "PERDISTE";
+    }
 
-/* listen to invites */
-function listenInvites(){
-  if(!myUid) return;
-  const ref = db.ref('invites/'+myUid);
-  ref.on('value', snap=>{
-    invitesEl.innerHTML='';
-    snap.forEach(child=>{
-      const inv = child.val(); const fromUid = child.key;
-      const el = document.createElement('div'); el.className='user-item';
-      el.innerHTML = `<div><strong>${inv.fromName}</strong><div class="small">Bet ${inv.bet} coins</div></div>`;
-      const accept = document.createElement('button'); accept.className='btn-ghost'; accept.textContent='Accept';
-      accept.onclick = ()=>acceptInvite(fromUid,inv.bet);
-      const decline = document.createElement('button'); decline.className='btn-ghost'; decline.textContent='Decline';
-      decline.onclick = ()=>db.ref('invites/'+myUid+'/'+fromUid).remove();
-      el.appendChild(accept); el.appendChild(decline);
-      invitesEl.appendChild(el);
+    function logMessage(msg) {
+      log.innerHTML += `<div>${msg}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Mantener sesión
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        await checkOrCreateWallet(user);
+      }
     });
-  });
-}
 
-/* accept invite -> create game object */
-async function acceptInvite(fromUid,bet){
-  // check balances
-  const myBal = (await db.ref('users/'+myUid+'/balance').once('value')).val()||0;
-  const otherBal = (await db.ref('users/'+fromUid+'/balance').once('value')).val()||0;
-  if(myBal < bet){alert('No tienes saldo suficiente'); return;}
-  if(otherBal < bet){alert('Rival no tiene saldo suficiente'); return;}
-  // create game id
-  const newGameRef = db.ref('games').push();
-  const gameId = newGameRef.key;
-  const gameObj = {
-    players: {[myUid]:{name:myName}, [fromUid]:{name:'opponent'}},
-    p1: fromUid, p2: myUid,
-    bet: bet,
-    state: 'waiting', // waiting -> countdown -> playing -> finished
-    ts: firebase.database.ServerValue.TIMESTAMP
-  };
-  await newGameRef.set(gameObj);
-  // remove invite
-  await db.ref('invites/'+myUid+'/'+fromUid).remove();
-  openGame(gameId);
-}
+    // --- WebRTC básico para videollamada ---
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    let peerConnection;
+    const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-/* if you invited someone, they will create the game; we also listen to games where we are player */
-db.ref('games').on('child_added', snap=>{
-  const g = snap.val(); const id = snap.key;
-  if(!auth.currentUser) return;
-  if(g.p1 === myUid || g.p2 === myUid){
-    // auto-open the game UI
-    openGame(id);
-  }
-});
-
-/* ================== GAME FLOW ================== */
-async function openGame(gameId){
-  currentGameId = gameId;
-  statusEl.textContent = 'In game';
-  centerText.textContent = 'Preparing...';
-  // listen to game updates
-  const gameRef = db.ref('games/'+gameId);
-  gameRef.on('value', snapshot=>{
-    const g = snapshot.val();
-    if(!g) return;
-    // update UI
-    if(g.state === 'countdown'){
-      runCountdown(gameId);
-    }else if(g.state === 'playing'){
-      centerText.textContent = 'Choose!';
-    }else if(g.state === 'finished'){
-      resolveUiAfterFinish(g);
-      gameRef.off(); // stop listening
+    async function startVideoChat() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localVideo.srcObject = stream;
+      peerConnection = new RTCPeerConnection(servers);
+      stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+      peerConnection.ontrack = (event) => remoteVideo.srcObject = event.streams[0];
     }
-  });
-
-  // if we are player2 (accepted), start countdown and lock bets
-  const gsnap = await gameRef.once('value'); const g = gsnap.val();
-  // if current user is p1 (inviter), do nothing; if p2 (acceptor) then start
-  if(g && g.p2 === myUid){
-    // Lock bets (simple locking using transactions)
-    const bet = g.bet || MIN_BET;
-    const p1 = g.p1, p2 = g.p2;
-    // atomic check + lock: we will run transactions on both balances
-    try{
-      await db.ref('users/'+p1+'/balance').transaction(curr=>{
-        if(curr === null) return;
-        if(curr < bet) return; // abort
-        return curr - bet;
-      });
-      await db.ref('users/'+p2+'/balance').transaction(curr=>{
-        if(curr === null) return;
-        if(curr < bet) return;
-        return curr - bet;
-      });
-      // mark game locked and start countdown
-      await gameRef.update({state:'countdown',locked:true});
-    }catch(e){
-      alert('Error al bloquear fondos: '+e.message);
-      await gameRef.update({state:'canceled'});
-    }
-  }
-}
-
-/* countdown implementation */
-let countdownRunning = false;
-async function runCountdown(gameId){
-  if(countdownRunning) return;
-  countdownRunning = true;
-  for(let i=3;i>=1;i--){
-    centerText.textContent = i;
-    beep(600 + i*40, 0.12);
-    if(i===1){ alarm(); }
-    // write countdown state to DB so both clients sync
-    await db.ref('games/'+gameId+'/countdown').set(i);
-    await new Promise(r=>setTimeout(r,900));
-  }
-  countdownRunning = false;
-  // enter playing state
-  await db.ref('games/'+gameId).update({state:'playing', startedAt:firebase.database.ServerValue.TIMESTAMP});
-  centerText.textContent = 'Choose!';
-}
-
-/* choose move */
-async function makeMove(move){
-  if(!currentGameId){alert('No game active'); return;}
-  // visual select
-  [btnRock,btnPaper,btnScissors].forEach(b=>b.classList.remove('selected'));
-  document.querySelector(`[data-move="${move}"]`).classList.add('selected');
-
-  // set move to DB
-  await db.ref('games/'+currentGameId+'/moves/'+myUid).set({move,ts:firebase.database.ServerValue.TIMESTAMP});
-
-  // read opponent move; if both moves exist, compute winner
-  const gRef = db.ref('games/'+currentGameId);
-  const gSnap = await gRef.once('value'); const g = gSnap.val();
-  const moves = (g && g.moves) || {};
-  const players = [g.p1,g.p2];
-  if(Object.keys(moves).length === 2){
-    // compute winner
-    const p1move = moves[players[0]].move;
-    const p2move = moves[players[1]].move;
-    const res = decide(p1move, p2move); // returns 0 draw, 1 p1 wins, 2 p2 wins
-    let winnerUid = null;
-    if(res === 1) winnerUid = players[0];
-    if(res === 2) winnerUid = players[1];
-    // distribute funds: pot = bet*2
-    const pot = (g.bet||MIN_BET)*2;
-    if(res === 0){
-      // refund both
-      await db.ref('users/'+players[0]+'/balance').transaction(b=> (b||0) + (g.bet||MIN_BET));
-      await db.ref('users/'+players[1]+'/balance').transaction(b=> (b||0) + (g.bet||MIN_BET));
-      await gRef.update({state:'finished', result:'draw', winner:null, moves, finishedAt:firebase.database.ServerValue.TIMESTAMP});
-      await db.ref('transactions/'+currentGameId).set({type:'draw',bet:g.bet,moves,ts:firebase.database.ServerValue.TIMESTAMP});
-    }else{
-      // credit winner
-      await db.ref('users/'+winnerUid+'/balance').transaction(b=> (b||0) + pot);
-      await gRef.update({state:'finished', result:'win', winner:winnerUid, moves, finishedAt:firebase.database.ServerValue.TIMESTAMP});
-      await db.ref('transactions/'+currentGameId).set({type:'win',winner:winnerUid,bet:g.bet,pot, moves,ts:firebase.database.ServerValue.TIMESTAMP});
-    }
-  }else{
-    centerText.textContent = 'Waiting opponent...';
-  }
-}
-
-/* decide winner helper */
-function decide(a,b){
-  if(a===b) return 0;
-  if(a==='rock' && b==='scissors') return 1;
-  if(a==='scissors' && b==='paper') return 1;
-  if(a==='paper' && b==='rock') return 1;
-  return 2;
-}
-
-/* UI after finished */
-async function resolveUiAfterFinish(g){
-  if(!g) return;
-  if(g.result === 'draw'){
-    centerText.textContent = 'DRAW';
-    beep(520,0.12);
-  }else if(g.result === 'win'){
-    const winUid = g.winner;
-    if(winUid === myUid){
-      centerText.textContent = 'YOU WIN!';
-      beep(980,0.16);
-    }else{
-      centerText.textContent = 'YOU LOSE';
-      beep(220,0.16);
-    }
-  }
-  // update local balance display
-  const balSnap = await db.ref('users/'+myUid+'/balance').once('value');
-  myBalance = balSnap.val()||0; balanceEl.textContent = myBalance+' coins';
-  // add to history UI
-  const txSnap = await db.ref('transactions/'+currentGameId).once('value');
-  if(txSnap.exists()){
-    const tx = txSnap.val();
-    const el = document.createElement('div'); el.className='tx';
-    el.textContent = JSON.stringify(tx);
-    historyEl.appendChild(el);
-  }
-  // cleanup: game can be removed later or left for record
-  currentGameId = null;
-  statusEl.textContent = 'idle';
-}
-
-/* EVENT LISTENERS FOR MOVE BUTTONS */
-btnRock.onclick = ()=>makeMove('rock');
-btnPaper.onclick = ()=>makeMove('paper');
-btnScissors.onclick = ()=>makeMove('scissors');
-
-/* listen to balance changes */
-db.ref('users').on('child_changed', snap=>{
-  const u = snap.val(), id = snap.key;
-  if(id === myUid){
-    myBalance = u.balance || 0;
-    balanceEl.textContent = myBalance+' coins';
-  }
-});
-
-/* listen transactions for history */
-function listenHistory(){
-  db.ref('transactions').limitToLast(10).on('child_added', snap=>{
-    const tx = snap.val();
-    const el = document.createElement('div'); el.className='tx';
-    el.textContent = JSON.stringify(tx);
-    historyEl.prepend(el);
-  });
-}
-
-/* ================== SIMPLE WEBRTC SETUP USING RTDB SIGNALING ================== */
-/* This is a simple P2P WebRTC using Realtime DB for offer/answer and ICE exchange.
-   Not optimized — for production use TURN servers and proper signaling */
-async function openLocalStream(){
-  try{
-    localStream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:320}}, audio:true});
-    localVideo.srcObject = localStream;
-  }catch(e){
-    console.warn('No local camera',e);
-  }
-}
-
-/* Basic createPeerConnection and signaling helpers */
-function createPC(gameId){
-  pc = new RTCPeerConnection({
-    iceServers: [{urls:'stun:stun.l.google.com:19302'}]
-  });
-  // add local tracks
-  if(localStream){
-    for(const t of localStream.getTracks()) pc.addTrack(t, localStream);
-  }
-  pc.ontrack = e=>{
-    remoteVideo.srcObject = e.streams[0];
-  };
-  pc.onicecandidate = event=>{
-    if(!event.candidate) return;
-    const candRef = db.ref('webrtc/'+gameId+'/candidates/'+myUid).push();
-    candRef.set(event.candidate.toJSON());
-  };
-  return pc;
-}
-
-/* create offer (inviter side) */
-async function createOffer(gameId, otherUid){
-  createPC(gameId);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  // write offer
-  await db.ref('webrtc/'+gameId+'/offer').set({sdp:offer.sdp,type:offer.type,from:myUid});
-  // listen answer
-  db.ref('webrtc/'+gameId+'/answer').on('value', async snap=>{
-    const ans = snap.val();
-    if(ans && ans.sdp){
-      await pc.setRemoteDescription(new RTCSessionDescription(ans));
-    }
-  });
-  // listen ICE candidates
-  db.ref('webrtc/'+gameId+'/candidates/'+otherUid).on('child_added', snap=>{
-    const cand = snap.val();
-    if(pc && cand) pc.addIceCandidate(new RTCIceCandidate(cand));
-  });
-}
-
-/* create answer (acceptor side) */
-async function createAnswer(gameId, offerObj, otherUid){
-  createPC(gameId);
-  await pc.setRemoteDescription(new RTCSessionDescription(offerObj));
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  await db.ref('webrtc/'+gameId+'/answer').set({sdp:answer.sdp,type:answer.type,from:myUid});
-  // listen ICE candidates
-  db.ref('webrtc/'+gameId+'/candidates/'+otherUid).on('child_added', snap=>{
-    const cand = snap.val();
-    if(pc && cand) pc.addIceCandidate(new RTCIceCandidate(cand));
-  });
-}
-
-/* Watch for offer creation to establish WebRTC when game present */
-db.ref('webrtc').on('child_added', async snap=>{
-  const gameId = snap.key;
-  const data = snap.val();
-  if(!data) return;
-  // if offer exists and it's NOT from me and the game involves me, create answer
-  if(data.offer && data.offer.from !== myUid){
-    // check game participants
-    const gSnap = await db.ref('games/'+gameId).once('value'); const g = gSnap.val();
-    if(!g) return;
-    if(g.p1 === myUid || g.p2 === myUid){
-      await createAnswer(gameId, {sdp:data.offer.sdp,type:data.offer.type}, data.offer.from);
-    }
-  }
-});
-
-/* When a game is created, inviter should create offer */
-db.ref('games').on('child_added', async snap=>{
-  const id = snap.key; const g = snap.val();
-  if(!g) return;
-  // inviter (p1) creates offer
-  if(g.p1 === myUid){
-    // create WebRTC entry if not exists
-    const wref = db.ref('webrtc/'+id);
-    const wSnap = await wref.once('value');
-    if(!wSnap.exists()){
-      // create offer and start signaling
-      await createOffer(id, g.p2);
-    }
-  }
-});
-
-/* cleanup local stream */
-function stopLocalStream(){
-  if(localStream){
-    for(const t of localStream.getTracks()) t.stop();
-    localStream = null;
-    localVideo.srcObject = null;
-  }
-}
-
-/* ================== INVITE BUTTON (quick invite to first online) ================== */
-inviteBtn.onclick = async ()=>{
-  // pick first user
-  const users = await db.ref('users').once('value');
-  let target = null;
-  users.forEach(s=>{
-    if(s.key !== myUid && !target) target = {id:s.key, val:s.val()};
-  });
-  if(!target){alert('No hay usuarios activos');return;}
-  sendInvite(target.id, target.val.name);
-};
-
-</script>
+    startVideoChat();
+  </script>
 </body>
 </html>
