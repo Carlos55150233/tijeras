@@ -454,8 +454,12 @@
         <h1>🎮 Rock Paper Scissors Arena</h1>
         <p style="color: #ccc; margin-bottom: 30px;">Live Battle with Video Chat</p>
         <input type="email" id="emailInput" placeholder="Email" class="login-btn" style="background: rgba(255,255,255,0.2);">
-        <input type="password" id="passwordInput" placeholder="Password" class="login-btn" style="background: rgba(255,255,255,0.2);">
-        <button onclick="loginWithEmail()" class="login-btn">Login / Sign Up</button>
+        <input type="password" id="passwordInput" placeholder="Password (min 6 characters)" class="login-btn" style="background: rgba(255,255,255,0.2);">
+        <button onclick="loginWithEmail()" class="login-btn">Login</button>
+        <button onclick="registerWithEmail()" class="login-btn" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+            Create Account
+        </button>
+        <div style="margin: 20px 0; color: #999;">OR</div>
         <button onclick="loginWithGoogle()" class="login-btn" style="background: linear-gradient(135deg, #ea4335, #fbbc05);">
             Sign in with Google
         </button>
@@ -540,15 +544,14 @@
         // Replace with your Firebase project config
         // ============================================
         const firebaseConfig = {
-  apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
-  authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
-  projectId: "piedra-papel-o-tijeras-5ae53",
-  storageBucket: "piedra-papel-o-tijeras-5ae53.firebasestorage.app",
-  messagingSenderId: "394850327081",
-  appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
-  measurementId: "G-C3VE5H0Y3S"
-};
-
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -635,19 +638,59 @@
                 return;
             }
 
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+
             try {
-                // Try to sign in first, if fails, create account
-                try {
-                    await auth.signInWithEmailAndPassword(email, password);
-                } catch (error) {
-                    if (error.code === 'auth/user-not-found') {
-                        await auth.createUserWithEmailAndPassword(email, password);
-                    } else {
-                        throw error;
-                    }
-                }
+                await auth.signInWithEmailAndPassword(email, password);
+                alert('Login successful! 🎮');
             } catch (error) {
-                alert('Login failed: ' + error.message);
+                if (error.code === 'auth/user-not-found') {
+                    alert('Account not found. Please create an account first.');
+                } else if (error.code === 'auth/wrong-password') {
+                    alert('Incorrect password. Please try again.');
+                } else if (error.code === 'auth/invalid-email') {
+                    alert('Invalid email address.');
+                } else {
+                    alert('Login failed: ' + error.message);
+                }
+            }
+        }
+
+        async function registerWithEmail() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters');
+                return;
+            }
+
+            if (!email.includes('@') || !email.includes('.')) {
+                alert('Please enter a valid email address');
+                return;
+            }
+
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+                alert('Account created successfully! 🎉\nYou start with 100 coins!');
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    alert('This email is already registered. Please login instead.');
+                } else if (error.code === 'auth/weak-password') {
+                    alert('Password is too weak. Use at least 6 characters.');
+                } else if (error.code === 'auth/invalid-email') {
+                    alert('Invalid email address format.');
+                } else {
+                    alert('Registration failed: ' + error.message);
+                }
             }
         }
 
