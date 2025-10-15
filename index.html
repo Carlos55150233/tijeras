@@ -220,6 +220,114 @@
       opacity: 0.5;
       filter: grayscale(80%);
     }
+    .screen-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      z-index: 2;
+      position: relative;
+    }
+    #login-screen button, #lobby-screen button, .modal button {
+      background: var(--metal-mid-gray);
+      border: 2px solid var(--metal-light-gray);
+      color: var(--metal-silver);
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all .2s;
+      margin: 5px;
+      font-size: 1rem;
+    }
+    #login-screen button:hover, #lobby-screen button:hover, .modal button:hover {
+      background: var(--glow-blue);
+      border-color: var(--metal-silver);
+    }
+    #login-screen input {
+      background: var(--metal-dark-gray);
+      border: 1px solid var(--metal-mid-gray);
+      color: var(--metal-silver);
+      padding: 10px;
+      border-radius: 5px;
+      margin: 5px 0;
+      width: 80%;
+      max-width: 300px;
+    }
+    #lobby-screen ul {
+      list-style: none;
+      width: 90%;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,.3);
+      border: 1px solid var(--metal-mid-gray);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #lobby-screen li {
+      padding: 8px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--metal-mid-gray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #lobby-screen li:hover {
+      background-color: var(--glow-blue);
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 10px;
+    }
+    .status-online { background-color: var(--glow-green); }
+    .status-ingame { background-color: var(--glow-red); }
+    #control-panel {
+      padding-top: 20px;
+    }
+    #button-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .control-button {
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      border: 3px solid var(--metal-dark-gray);
+      background: linear-gradient(145deg, var(--metal-mid-gray), var(--metal-dark-gray));
+      box-shadow: -5px -5px 10px rgba(255,255,255,.1), 5px 5px 10px rgba(0,0,0,.5), inset 0 0 5px rgba(0,0,0,.5);
+      font-size: 3rem;
+      cursor: pointer;
+      transition: all .2s ease-out;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+    }
+    .control-button:hover:not(:disabled) {
+      transform: translateY(-5px);
+      box-shadow: -5px -5px 15px rgba(52, 152, 219, .5), 5px 5px 15px rgba(0,0,0,.7), inset 0 0 10px rgba(52, 152, 219, .3);
+      filter: brightness(1.2);
+    }
+    .control-button.selected {
+      transform: translateY(2px);
+      background: var(--glow-blue);
+      box-shadow: 0 0 20px var(--glow-blue), inset 0 0 10px rgba(255,255,255,.5);
+      color: white;
+    }
+    .control-button:active:not(:disabled) {
+      transform: translateY(2px);
+      filter: brightness(0.9);
+    }
+    .control-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      filter: grayscale(80%);
+    }
     #game-screen-content {
       display: flex;
       flex-direction: column;
@@ -380,6 +488,8 @@
             <button type="submit">Login</button>
           </form>
           <button id="google-login-btn">Sign In with Google</button>
+          <p style="margin-top:10px;">or</p>
+          <button id="signup-btn">Create Account</button>
           <p id="auth-error" class="hidden" style="color: var(--glow-red); margin-top: 10px;"></p>
         </div>
 
@@ -709,19 +819,35 @@
     // ===== AUTH MANAGER =====
     const authManager = {
       init() {
+        // LOGIN normal
         document.getElementById('login-form').addEventListener('submit', e => {
           e.preventDefault();
           const email = document.getElementById('email').value;
           const password = document.getElementById('password').value;
           auth.signInWithEmailAndPassword(email, password).catch(err => ui.showAuthError(err.message));
         });
+
+        // REGISTRO
+        document.getElementById('signup-btn').addEventListener('click', () => {
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          if (!email || !password) { alert("Complete email and password"); return; }
+          auth.createUserWithEmailAndPassword(email, password)
+            .then(cred => dbManager.createUserProfile(cred.user))
+            .catch(err => ui.showAuthError(err.message));
+        });
+
+        // GOOGLE
         document.getElementById('google-login-btn').addEventListener('click', () => {
           auth.signInWithPopup(googleProvider).then(result => {
             if (result.additionalUserInfo.isNewUser) dbManager.createUserProfile(result.user);
           }).catch(err => ui.showAuthError(err.message));
         });
+
+        // LOGOUT
         document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
 
+        // CAMBIOS DE SESIÓN
         auth.onAuthStateChanged(user => {
           if (user) {
             console.log("✅ Usuario autenticado:", user.uid);
@@ -925,7 +1051,7 @@
       },
       declineInvitation(gameId, invitationRef) {
         db.ref(`games/${gameId}`).remove();
-        if (invitationRef) invitationRef.remove();
+        if(invitationRef) invitationRef.remove();
       },
       async acceptInvitation(gameId, invitationRef) {
         const gameRef = db.ref(`games/${gameId}`);
@@ -977,7 +1103,7 @@
                 if (!appState.currentGameId) return;
                 db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
                   const signals = snap.val();
-                  if (signals && signals.p1Signal && signals.p2Signal) game.startCountdown();
+                  if(signals && signals.p1Signal && signals.p2Signal) game.startCountdown();
                 });
               }, 2000);
             }
