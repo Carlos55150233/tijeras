@@ -830,14 +830,11 @@
           console.log('My peer ID is: ' + id);
           const gameRef = db.ref(`games/${appState.currentGameId}`);
           const myPeerKey = appState.isGameCreator ? 'p1PeerId' : 'p2PeerId';
-          gameRef.child(myPeerKey).set(id); // Write my Peer ID
-          
-          // Listen for opponent's Peer ID
+          gameRef.child(myPeerKey).set(id);
           const opponentPeerKey = appState.isGameCreator ? 'p2PeerId' : 'p1PeerId';
           gameRef.child(opponentPeerKey).on('value', snap => {
             if (snap.exists() && snap.val()) {
               const remotePeerId = snap.val();
-              // Make sure we are not connecting to ourselves and have a stream
               if (remotePeerId !== id && appState.localStream) {
                  console.log(`Connecting to remote peer: ${remotePeerId}`);
                  webrtc.connectToRemotePeer(remotePeerId);
@@ -989,17 +986,20 @@
           }
           return;
         }
+        
+        if (gameData.nextGameId) {
+            game.startRematch(gameData.nextGameId);
+            return;
+        }
+        
         ui.updateGameInfo(gameData);
+
         switch (gameData.status) {
           case 'active':
             ui.showGameStatus("Connecting...", '', 0);
-            // ===== START: FIX FOR VIDEO SYNC =====
-            // The game creator checks if both peer IDs are available.
-            // This is the signal that both players are ready.
             if (appState.isGameCreator && gameData.p1PeerId && gameData.p2PeerId) {
               game.startCountdown();
             }
-            // ===== END: FIX FOR VIDEO SYNC =====
             break;
           case 'countdown':
             game.handleCountdown(gameData);
@@ -1018,9 +1018,21 @@
             game.revealResult(gameData);
             break;
           case 'finished':
-            // Only show modal if it's not already visible
-            if (!document.querySelector('#modal-container .modal')) {
-              setTimeout(() => game.showPostGameOptions(), 5000);
+            if (!document.getElementById('post-game-modal')) {
+              setTimeout(() => game.showPostGameOptions(), 4000);
+            }
+            const p1 = gameData.players.p1;
+            const p2 = gameData.players.p2;
+            if (p1.rematch && p2.rematch) {
+              if (appState.isGameCreator) {
+                game.createRematchGame(gameData);
+              }
+            } else if (document.getElementById('post-game-modal')) {
+                const myKey = appState.isGameCreator ? 'p1' : 'p2';
+                const opponentKey = appState.isGameCreator ? 'p2' : 'p1';
+                if (gameData.players[opponentKey].rematch && !gameData.players[myKey].rematch) {
+                    document.getElementById('rematch-status-text').textContent = "Opponent wants a rematch!";
+                }
             }
             break;
         }
@@ -1028,16 +1040,15 @@
       startCountdown() {
         if (!appState.currentGameId) return;
         const gameRef = db.ref(`games/${appState.currentGameId}`);
-        // Use a transaction to safely change the status from 'active' to 'countdown'
         gameRef.transaction(currentData => {
           if (currentData && currentData.status === 'active') {
             currentData.status = 'countdown';
             currentData.countdown = 3;
             return currentData;
           }
-          return; // Abort if status is not 'active'
+          return;
         }).then(result => {
-          if (!result.committed) return; // If transaction failed, do nothing
+          if (!result.committed) return;
           let count = 3;
           const interval = setInterval(() => {
             count--;
@@ -1048,7 +1059,7 @@
                 db.ref(`games/${appState.currentGameId}/status`).set('choose');
               }
             } else {
-                clearInterval(interval); // Clean up if game ended mid-countdown
+                clearInterval(interval);
             }
           }, 1000);
         });
@@ -1073,7 +1084,6 @@
         const playerKey = appState.isGameCreator ? 'p1' : 'p2';
         db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
           ui.showGameStatus("Choice locked! Waiting for opponent...", '', 0);
-          // Only the creator needs to check to advance the game state
           if (appState.isGameCreator) {
              db.ref(`games/${appState.currentGameId}/players`).once('value', snap => {
                 const players = snap.val();
@@ -1129,22 +1139,64 @@
         }
       },
       showPostGameOptions() {
-        if (!appState.currentGameId) return; // Don't show if already left
+        if (!appState.currentGameId || document.getElementById('post-game-modal')) return;
         const modalHTML = `
-          <div class="modal">
+          <div class="modal" id="post-game-modal">
             <div class="modal-content">
               <h3>Game Over</h3>
-              <p>Check your updated balance!</p>
+              <p id="rematch-status-text">Play again?</p>
+              <button id="rematch-btn">Rematch</button>
               <button id="exit-game-btn">Exit to Lobby</button>
             </div>
           </div>`;
         dom.modalContainer.innerHTML = modalHTML;
-        document.getElementById('exit-game-btn').onclick = () => {
-          if (appState.isGameCreator) {
-            db.ref(`games/${appState.currentGameId}`).remove();
-          }
-          game.leave();
+        document.getElementById('rematch-btn').onclick = () => {
+          const playerKey = appState.isGameCreator ? 'p1' : 'p2';
+          db.ref(`games/${appState.currentGameId}/players/${playerKey}/rematch`).set(true);
+          document.getElementById('rematch-status-text').textContent = "Waiting for opponent...";
+          document.getElementById('rematch-btn').disabled = true;
         };
+        document.getElementById('exit-game-btn').onclick = () => {
+          if (appState.isGameCreator && appState.currentGameId) {
+            db.ref(`games/${appState.currentGameId}`).remove();
+          } else {
+             game.leave();
+          }
+        };
+      },
+      async createRematchGame(oldGameData) {
+        if (!appState.isGameCreator) return;
+        const oldGameId = appState.currentGameId;
+        const nextGameRef = db.ref(`games/${oldGameId}/nextGameId`);
+        const snap = await nextGameRef.once('value');
+        if (snap.exists()) return;
+        console.log('Creator is creating a rematch game...');
+        const newGameId = db.ref('games').push().key;
+        const p1_new = { ...oldGameData.players.p1, choice: null, rematch: null };
+        delete p1_new.rematch;
+        const p2_new = { ...oldGameData.players.p2, choice: null, rematch: null };
+        delete p2_new.rematch;
+        const newGameData = {
+          bet: oldGameData.bet,
+          status: 'active',
+          players: { p1: p1_new, p2: p2_new }
+        };
+        await db.ref(`games/${newGameId}`).set(newGameData);
+        await nextGameRef.set(newGameId);
+      },
+      startRematch(nextGameId) {
+        console.log(`Both players agreed. Moving to new game: ${nextGameId}`);
+        const oldGameId = appState.currentGameId;
+        const isCreator = appState.isGameCreator;
+        if (oldGameId && appState.activeGameListener) {
+            db.ref(`games/${oldGameId}`).off('value', appState.activeGameListener);
+            appState.activeGameListener = null;
+        }
+        ui.hideModal();
+        if (isCreator) {
+            db.ref(`games/${oldGameId}`).remove();
+        }
+        game.join(nextGameId, isCreator);
       },
       leave() {
         ui.hideModal();
