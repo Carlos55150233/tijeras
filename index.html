@@ -544,13 +544,12 @@
             currentUserProfile: null,
             currentGameId: null,
             localStream: null,
-            peerConnection: null,
+            peer: null,
             isGameCreator: false,
             playerChoice: null,
             activeGameListener: null,
             pendingInvitation: null, 
             activeInvitationListener: null,
-            peer: null,
             remotePeerId: null,
         };
 
@@ -613,22 +612,47 @@
             },
             hideAuthError: () => dom.authError.classList.add('hidden'),
             renderPlayers: (players) => {
+                console.log("🎨 Renderizando usuarios:", players);
                 dom.playersList.innerHTML = '';
-                Object.keys(players).forEach(uid => {
-                    if (uid === appState.currentUser.uid) return;
-                    const player = players[uid];
+                
+                const playerArray = Object.entries(players);
+                console.log("📋 Array de jugadores:", playerArray);
+                
+                if (playerArray.length === 0) {
+                    console.log("⚠️ No hay jugadores activos");
+                    dom.playersList.innerHTML = '<li style="text-align: center; color: var(--metal-light-gray);">No hay jugadores online</li>';
+                    return;
+                }
+                
+                playerArray.forEach(([uid, player]) => {
+                    if (uid === appState.currentUser.uid || !player) return;
+                    
+                    console.log("👤 Procesando jugador:", player.displayName, "Status:", player.status);
+                    
                     const li = document.createElement('li');
+                    const statusClass = player.status === 'online' ? 'status-online' : 'status-ingame';
+                    const statusText = player.status === 'online' ? 'Online' : 'En juego';
+                    
                     li.innerHTML = `
-                        <span><span class="status-dot ${player.status === 'online' ? 'status-online' : 'status-ingame'}"></span>${player.displayName}</span>
-                        <span>💰${player.wallet}</span>`;
+                        <span>
+                            <span class="status-dot ${statusClass}"></span>
+                            ${player.displayName || 'Sin nombre'}
+                        </span>
+                        <span>💰${player.wallet || 0}</span>
+                    `;
+                    
                     if (player.status === 'online') {
-                        li.onclick = () => ui.showChallengeModal(uid, player.displayName);
+                        li.style.cursor = 'pointer';
+                        li.onclick = () => ui.showChallengeModal(uid, player.displayName || 'Jugador');
                     } else {
                         li.style.cursor = 'not-allowed';
                         li.style.opacity = '0.5';
                     }
+                    
                     dom.playersList.appendChild(li);
                 });
+                
+                console.log("✅ Usuarios renderizados:", playerArray.length);
             },
             updateLobbyHeader: () => {
                 if(appState.currentUserProfile) {
@@ -787,6 +811,7 @@
                 
                 auth.onAuthStateChanged(user => {
                     if (user) {
+                        console.log("✅ Usuario autenticado:", user.uid);
                         appState.currentUser = user;
                         dbManager.onUserConnect();
                         dbManager.listenToProfile(user.uid);
@@ -819,7 +844,27 @@
             },
             updateUserStatus: (status) => { if(appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status); },
             listenToProfile: (uid) => db.ref(`users/${uid}`).on('value', snap => { appState.currentUserProfile = snap.val(); ui.updateLobbyHeader(); }),
-            listenToPlayers: () => db.ref('users').on('value', snap => ui.renderPlayers(snap.val() || {})),
+            listenToPlayers: () => {
+                console.log("🔍 Iniciando escucha de usuarios...");
+                
+                db.ref('users').on('value', snap => {
+                    const players = snap.val() || {};
+                    console.log("📊 Usuarios recibidos:", players);
+                    
+                    // Filtra usuarios online/ingame
+                    const activePlayers = {};
+                    Object.keys(players).forEach(uid => {
+                        if (players[uid] && (players[uid].status === 'online' || players[uid].status === 'ingame')) {
+                            activePlayers[uid] = players[uid];
+                        }
+                    });
+                    
+                    console.log("🟢 Usuarios activos:", activePlayers);
+                    ui.renderPlayers(activePlayers);
+                }, error => {
+                    console.error("❌ Error escuchando usuarios:", error);
+                });
+            },
             listenForInvitations: (uid) => {
                 const invitationsRef = db.ref(`invitations/${uid}`);
                 invitationsRef.on('child_added', (snap) => {
