@@ -220,114 +220,6 @@
       opacity: 0.5;
       filter: grayscale(80%);
     }
-    .screen-content {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      z-index: 2;
-      position: relative;
-    }
-    #login-screen button, #lobby-screen button, .modal button {
-      background: var(--metal-mid-gray);
-      border: 2px solid var(--metal-light-gray);
-      color: var(--metal-silver);
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: all .2s;
-      margin: 5px;
-      font-size: 1rem;
-    }
-    #login-screen button:hover, #lobby-screen button:hover, .modal button:hover {
-      background: var(--glow-blue);
-      border-color: var(--metal-silver);
-    }
-    #login-screen input {
-      background: var(--metal-dark-gray);
-      border: 1px solid var(--metal-mid-gray);
-      color: var(--metal-silver);
-      padding: 10px;
-      border-radius: 5px;
-      margin: 5px 0;
-      width: 80%;
-      max-width: 300px;
-    }
-    #lobby-screen ul {
-      list-style: none;
-      width: 90%;
-      max-height: 200px;
-      overflow-y: auto;
-      background: rgba(0,0,0,.3);
-      border: 1px solid var(--metal-mid-gray);
-      padding: 10px;
-      border-radius: 5px;
-    }
-    #lobby-screen li {
-      padding: 8px;
-      cursor: pointer;
-      border-bottom: 1px solid var(--metal-mid-gray);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    #lobby-screen li:hover {
-      background-color: var(--glow-blue);
-    }
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 10px;
-    }
-    .status-online { background-color: var(--glow-green); }
-    .status-ingame { background-color: var(--glow-red); }
-    #control-panel {
-      padding-top: 20px;
-    }
-    #button-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-    .control-button {
-      aspect-ratio: 1 / 1;
-      border-radius: 50%;
-      border: 3px solid var(--metal-dark-gray);
-      background: linear-gradient(145deg, var(--metal-mid-gray), var(--metal-dark-gray));
-      box-shadow: -5px -5px 10px rgba(255,255,255,.1), 5px 5px 10px rgba(0,0,0,.5), inset 0 0 5px rgba(0,0,0,.5);
-      font-size: 3rem;
-      cursor: pointer;
-      transition: all .2s ease-out;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      user-select: none;
-    }
-    .control-button:hover:not(:disabled) {
-      transform: translateY(-5px);
-      box-shadow: -5px -5px 15px rgba(52, 152, 219, .5), 5px 5px 15px rgba(0,0,0,.7), inset 0 0 10px rgba(52, 152, 219, .3);
-      filter: brightness(1.2);
-    }
-    .control-button.selected {
-      transform: translateY(2px);
-      background: var(--glow-blue);
-      box-shadow: 0 0 20px var(--glow-blue), inset 0 0 10px rgba(255,255,255,.5);
-      color: white;
-    }
-    .control-button:active:not(:disabled) {
-      transform: translateY(2px);
-      filter: brightness(0.9);
-    }
-    .control-button:disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
-      filter: grayscale(80%);
-    }
     #game-screen-content {
       display: flex;
       flex-direction: column;
@@ -663,7 +555,7 @@
       renderPlayers(players) {
         dom.playersList.innerHTML = '';
         const arr = Object.entries(players);
-        if (arr.length === 0) {
+        if (arr.length <= 1) {
           dom.playersList.innerHTML = '<li style="text-align:center;color:var(--metal-light-gray);">No hay jugadores online</li>';
           return;
         }
@@ -898,12 +790,7 @@
         db.ref('users').on('value', snap => {
           const players = snap.val() || {};
           console.log("📊 Usuarios recibidos:", players);
-          const active = {};
-          Object.keys(players).forEach(uid => {
-            if (players[uid] && (players[uid].status === 'online' || players[uid].status === 'ingame')) active[uid] = players[uid];
-          });
-          console.log("🟢 Usuarios activos:", active);
-          ui.renderPlayers(active);
+          ui.renderPlayers(players);
         }, err => {
           console.error("❌ Error escuchando usuarios:", err);
         });
@@ -943,28 +830,37 @@
           console.log('My peer ID is: ' + id);
           const gameRef = db.ref(`games/${appState.currentGameId}`);
           const myPeerKey = appState.isGameCreator ? 'p1PeerId' : 'p2PeerId';
-          gameRef.child(myPeerKey).set(id);
+          gameRef.child(myPeerKey).set(id); // Write my Peer ID
+          
+          // Listen for opponent's Peer ID
           const opponentPeerKey = appState.isGameCreator ? 'p2PeerId' : 'p1PeerId';
           gameRef.child(opponentPeerKey).on('value', snap => {
             if (snap.exists() && snap.val()) {
-              appState.remotePeerId = snap.val();
-              if (appState.remotePeerId !== id) webrtc.connectToRemotePeer();
+              const remotePeerId = snap.val();
+              // Make sure we are not connecting to ourselves and have a stream
+              if (remotePeerId !== id && appState.localStream) {
+                 console.log(`Connecting to remote peer: ${remotePeerId}`);
+                 webrtc.connectToRemotePeer(remotePeerId);
+              }
             }
           });
         });
         appState.peer.on('call', call => {
+          console.log('Receiving a call...');
           call.answer(appState.localStream);
           call.on('stream', remoteStream => {
+            console.log('Received remote stream.');
             dom.remoteVideo.srcObject = remoteStream;
             dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
           });
         });
         appState.peer.on('error', err => console.error('PeerJS error:', err));
       },
-      connectToRemotePeer() {
-        if (!appState.remotePeerId || !appState.peer) return;
-        const call = appState.peer.call(appState.remotePeerId, appState.localStream);
+      connectToRemotePeer(remotePeerId) {
+        if (!remotePeerId || !appState.peer || !appState.localStream) return;
+        const call = appState.peer.call(remotePeerId, appState.localStream);
         call.on('stream', remoteStream => {
+          console.log('Call established, received remote stream.');
           dom.remoteVideo.srcObject = remoteStream;
           dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
         });
@@ -1040,13 +936,12 @@
         if (!appState.pendingInvitation) return;
         const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
         const gameRef = db.ref(`games/${gameId}`);
-        const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
         if (appState.activeInvitationListener) {
           gameRef.off('value', appState.activeInvitationListener);
           appState.activeInvitationListener = null;
         }
         gameRef.onDisconnect().cancel();
-        invitationRef.onDisconnect().cancel();
+        db.ref(`invitations/${opponentId}/${invitationKey}`).onDisconnect().cancel();
         appState.pendingInvitation = null;
       },
       declineInvitation(gameId, invitationRef) {
@@ -1098,15 +993,13 @@
         switch (gameData.status) {
           case 'active':
             ui.showGameStatus("Connecting...", '', 0);
-            if (appState.isGameCreator) {
-              setTimeout(() => {
-                if (!appState.currentGameId) return;
-                db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
-                  const signals = snap.val();
-                  if(signals && signals.p1Signal && signals.p2Signal) game.startCountdown();
-                });
-              }, 2000);
+            // ===== START: FIX FOR VIDEO SYNC =====
+            // The game creator checks if both peer IDs are available.
+            // This is the signal that both players are ready.
+            if (appState.isGameCreator && gameData.p1PeerId && gameData.p2PeerId) {
+              game.startCountdown();
             }
+            // ===== END: FIX FOR VIDEO SYNC =====
             break;
           case 'countdown':
             game.handleCountdown(gameData);
@@ -1125,7 +1018,8 @@
             game.revealResult(gameData);
             break;
           case 'finished':
-            if (!document.querySelector('.modal')) {
+            // Only show modal if it's not already visible
+            if (!document.querySelector('#modal-container .modal')) {
               setTimeout(() => game.showPostGameOptions(), 5000);
             }
             break;
@@ -1134,21 +1028,27 @@
       startCountdown() {
         if (!appState.currentGameId) return;
         const gameRef = db.ref(`games/${appState.currentGameId}`);
+        // Use a transaction to safely change the status from 'active' to 'countdown'
         gameRef.transaction(currentData => {
           if (currentData && currentData.status === 'active') {
             currentData.status = 'countdown';
             currentData.countdown = 3;
             return currentData;
           }
+          return; // Abort if status is not 'active'
         }).then(result => {
-          if (!result.committed) return;
+          if (!result.committed) return; // If transaction failed, do nothing
           let count = 3;
           const interval = setInterval(() => {
             count--;
-            if (count >= 0) db.ref(`games/${appState.currentGameId}/countdown`).set(count);
-            if (count < 0) {
-              clearInterval(interval);
-              db.ref(`games/${appState.currentGameId}/status`).set('choose');
+            if (appState.currentGameId) {
+              if (count >= 0) db.ref(`games/${appState.currentGameId}/countdown`).set(count);
+              if (count < 0) {
+                clearInterval(interval);
+                db.ref(`games/${appState.currentGameId}/status`).set('choose');
+              }
+            } else {
+                clearInterval(interval); // Clean up if game ended mid-countdown
             }
           }, 1000);
         });
@@ -1173,12 +1073,15 @@
         const playerKey = appState.isGameCreator ? 'p1' : 'p2';
         db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
           ui.showGameStatus("Choice locked! Waiting for opponent...", '', 0);
-          db.ref(`games/${appState.currentGameId}/players`).once('value', snap => {
-            const players = snap.val();
-            if (players.p1.choice && players.p2.choice && appState.isGameCreator) {
-              setTimeout(() => db.ref(`games/${appState.currentGameId}/status`).set('reveal'), 500);
-            }
-          });
+          // Only the creator needs to check to advance the game state
+          if (appState.isGameCreator) {
+             db.ref(`games/${appState.currentGameId}/players`).once('value', snap => {
+                const players = snap.val();
+                if (players.p1.choice && players.p2.choice) {
+                  setTimeout(() => db.ref(`games/${appState.currentGameId}/status`).set('reveal'), 500);
+                }
+             });
+          }
         });
       },
       revealResult(gameData) {
@@ -1205,8 +1108,9 @@
         return c2;
       },
       async updateWalletsAndFinish(gameData, winnerChoice, p1Id, p2Id) {
+        const gameRef = db.ref(`games/${appState.currentGameId}/status`);
         if (winnerChoice === null) {
-          await db.ref(`games/${appState.currentGameId}/status`).set('finished');
+          await gameRef.set('finished');
           return;
         }
         const { bet } = gameData;
@@ -1219,12 +1123,13 @@
           await winnerRef.transaction(wallet => (wallet || 0) + bet);
           await loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet));
           console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
-          await db.ref(`games/${appState.currentGameId}/status`).set('finished');
+          await gameRef.set('finished');
         } catch (error) {
           console.error("Error updating wallets:", error);
         }
       },
       showPostGameOptions() {
+        if (!appState.currentGameId) return; // Don't show if already left
         const modalHTML = `
           <div class="modal">
             <div class="modal-content">
@@ -1235,8 +1140,10 @@
           </div>`;
         dom.modalContainer.innerHTML = modalHTML;
         document.getElementById('exit-game-btn').onclick = () => {
-          if (appState.isGameCreator) db.ref(`games/${appState.currentGameId}`).remove();
-          else game.leave();
+          if (appState.isGameCreator) {
+            db.ref(`games/${appState.currentGameId}`).remove();
+          }
+          game.leave();
         };
       },
       leave() {
