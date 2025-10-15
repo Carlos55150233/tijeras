@@ -1,1376 +1,1143 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>Metal RPS Arena</title>
-    <style>
-        :root {
-            --metal-dark-gray: #2c3e50;
-            --metal-mid-gray: #596a7b;
-            --metal-light-gray: #bdc3c7;
-            --metal-silver: #e0e0e0;
-            --glow-blue: #3498db;
-            --glow-red: #e74c3c;
-            --glow-green: #2ecc71;
-            --glow-yellow: #f39c12;
-            --screen-bg: #0a0f14;
-            --font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-        }
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        html, body {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            font-family: var(--font-family);
-            background-color: var(--metal-dark-gray);
-            color: var(--metal-silver);
-            touch-action: manipulation;
-        }
-
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            perspective: 1000px;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        #app-container {
-            width: 100%;
-            max-width: 500px;
-            height: 100%;
-            max-height: 900px;
-            background: linear-gradient(145deg, #4d5c6b, #2f3a46);
-            border-radius: 20px;
-            box-shadow: 
-                inset 0 0 15px rgba(0,0,0,0.6),
-                0 10px 30px rgba(0,0,0,0.5);
-            border: 3px solid #1a222a;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            transform: rotateX(5deg);
-            transition: transform 0.5s;
-        }
-        
-        @media (max-width: 600px) {
-            #app-container {
-                max-width: 100%;
-                max-height: 100%;
-                height: 100dvh;
-                border-radius: 0;
-                padding: 10px;
-                transform: none;
-            }
-        }
-
-        #game-machine {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        #top-screen {
-            flex-grow: 1;
-            background-color: var(--screen-bg);
-            border: 5px solid var(--metal-dark-gray);
-            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
-            clip-path: polygon(5% 0, 95% 0, 100% 10%, 100% 90%, 95% 100%, 5% 100%, 0 90%, 0 10%);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        #top-screen::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 30px 30px;
-            pointer-events: none;
-            z-index: 1;
-        }
-        
-        #top-screen::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%);
-            animation: screen-flicker 15s infinite linear;
-        }
-
-        @keyframes screen-flicker {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(5px, 5px); }
-            50% { transform: translate(-5px, 0); }
-            75% { transform: translate(0, -5px); }
-            100% { transform: translate(0, 0); }
-        }
-
-        #control-panel {
-            padding-top: 20px;
-        }
-
-        #button-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }
-
-        .control-button {
-            aspect-ratio: 1 / 1;
-            border-radius: 50%;
-            border: 3px solid var(--metal-dark-gray);
-            background: linear-gradient(145deg, var(--metal-mid-gray), var(--metal-dark-gray));
-            box-shadow: 
-                -5px -5px 10px rgba(255,255,255,0.1), 
-                5px 5px 10px rgba(0,0,0,0.5),
-                inset 0 0 5px rgba(0,0,0,0.5);
-            font-size: 3rem;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            user-select: none;
-        }
-        
-        .control-button:hover:not(:disabled) {
-            transform: translateY(-5px);
-            box-shadow: 
-                -5px -5px 15px rgba(52, 152, 219, 0.5), 
-                5px 5px 15px rgba(0,0,0,0.7),
-                inset 0 0 10px rgba(52, 152, 219, 0.3);
-            filter: brightness(1.2);
-        }
-
-        .control-button.selected {
-            transform: translateY(2px);
-            background: var(--glow-blue);
-            box-shadow: 0 0 20px var(--glow-blue), inset 0 0 10px rgba(255,255,255,0.5);
-            color: white;
-        }
-        
-        .control-button:active:not(:disabled) {
-            transform: translateY(2px);
-            filter: brightness(0.9);
-        }
-
-        .control-button:disabled {
-            cursor: not-allowed;
-            opacity: 0.5;
-            filter: grayscale(80%);
-        }
-        
-        .screen-content {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            z-index: 2;
-            position: relative;
-        }
-
-        #login-screen button, #lobby-screen button, .modal button {
-            background: var(--metal-mid-gray);
-            border: 2px solid var(--metal-light-gray);
-            color: var(--metal-silver);
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 5px;
-            font-size: 1rem;
-        }
-        #login-screen button:hover, #lobby-screen button:hover, .modal button:hover {
-            background: var(--glow-blue);
-            border-color: var(--metal-silver);
-        }
-
-        #login-screen input {
-            background: var(--metal-dark-gray);
-            border: 1px solid var(--metal-mid-gray);
-            color: var(--metal-silver);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 5px 0;
-            width: 80%;
-            max-width: 300px;
-        }
-
-        #lobby-screen ul {
-            list-style: none;
-            width: 90%;
-            max-height: 200px;
-            overflow-y: auto;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--metal-mid-gray);
-            padding: 10px;
-            border-radius: 5px;
-        }
-        #lobby-screen li {
-            padding: 8px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--metal-mid-gray);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        #lobby-screen li:hover {
-            background-color: var(--glow-blue);
-        }
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 10px;
-        }
-        .status-online { background-color: var(--glow-green); }
-        .status-ingame { background-color: var(--glow-red); }
-
-        #game-screen-content {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-        }
-        
-        #game-info {
-            display: flex;
-            justify-content: space-around;
-            width: 100%;
-            padding: 5px 0;
-            background: rgba(0,0,0,0.5);
-            border-radius: 5px;
-            font-size: 0.8rem;
-        }
-        .player-info { text-align: center; }
-
-        #video-streams {
-            flex-grow: 1;
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            padding: 10px 0;
-            min-height: 0;
-        }
-
-        .video-container {
-            flex: 1;
-            position: relative;
-            background: #000;
-            border: 2px solid var(--metal-mid-gray);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: inset 0 0 10px #000;
-        }
-        
-        .video-container video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        #local-video {
-            transform: scaleX(-1);
-        }
-
-        .video-label {
-            position: absolute;
-            top: 5px;
-            left: 5px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 0.7rem;
-            z-index: 5;
-        }
-
-        #game-status-display {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0,0,0,0.85);
-            z-index: 10;
-            padding: 20px;
-        }
-        
-        #game-status-text {
-            font-size: 3rem;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 0 20px var(--glow-blue);
-            animation: pulse 1.5s infinite;
-            margin-bottom: 20px;
-        }
-
-        #game-choices-display {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 30px;
-            margin: 20px 0;
-        }
-
-        .choice-item {
-            text-align: center;
-        }
-
-        .choice-emoji {
-            font-size: 4rem;
-            margin-bottom: 10px;
-        }
-
-        .choice-label {
-            font-size: 1rem;
-            color: var(--metal-light-gray);
-        }
-
-        .vs-text {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--glow-yellow);
-        }
-
-        #winner-display {
-            font-size: 1.5rem;
-            margin-top: 20px;
-            padding: 10px 20px;
-            border-radius: 10px;
-            background: rgba(0,0,0,0.5);
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
-        .result-win { text-shadow: 0 0 20px var(--glow-green) !important; color: var(--glow-green) !important; }
-        .result-lose { text-shadow: 0 0 20px var(--glow-red) !important; color: var(--glow-red) !important; }
-        .result-draw { text-shadow: 0 0 20px var(--metal-silver) !important; color: var(--metal-silver) !important; }
-
-        .modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(145deg, #4d5c6b, #2f3a46);
-            border: 2px solid var(--metal-silver);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.7);
-            z-index: 100;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .modal-content {
-            text-align: center;
-        }
-        
-        .modal input {
-            width: 100px;
-            text-align: center;
-            font-size: 1.2rem;
-            margin: 10px auto;
-            display: block;
-            background: var(--metal-dark-gray);
-            border: 1px solid var(--metal-mid-gray);
-            color: var(--metal-silver);
-            padding: 10px;
-            border-radius: 5px;
-        }
-
-        @media (max-width: 600px) {
-            #game-status-text {
-                font-size: 2rem;
-            }
-            .choice-emoji {
-                font-size: 3rem;
-            }
-            .vs-text {
-                font-size: 1.5rem;
-            }
-            #winner-display {
-                font-size: 1.2rem;
-            }
-        }
-
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Metal RPS Arena</title>
+  <style>
+    :root {
+      --metal-dark-gray: #2c3e50;
+      --metal-mid-gray: #596a7b;
+      --metal-light-gray: #bdc3c7;
+      --metal-silver: #e0e0e0;
+      --glow-blue: #3498db;
+      --glow-red: #e74c3c;
+      --glow-green: #2ecc71;
+      --glow-yellow: #f39c12;
+      --screen-bg: #0a0f14;
+      --font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: var(--font-family);
+      background: var(--metal-dark-gray);
+      color: var(--metal-silver);
+      touch-action: manipulation;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1000px;
+    }
+    .hidden {
+      display: none !important;
+    }
+    #app-container {
+      width: 100%;
+      max-width: 500px;
+      height: 100%;
+      max-height: 900px;
+      background: linear-gradient(145deg, #4d5c6b, #2f3a46);
+      border-radius: 20px;
+      box-shadow: inset 0 0 15px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.5);
+      border: 3px solid #1a222a;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      transform: rotateX(5deg);
+      transition: transform .5s;
+    }
+    @media (max-width: 600px) {
+      #app-container {
+        max-width: 100%;
+        max-height: 100%;
+        height: 100dvh;
+        border-radius: 0;
+        padding: 10px;
+        transform: none;
+      }
+    }
+    #game-machine {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    #top-screen {
+      flex-grow: 1;
+      background: var(--screen-bg);
+      border: 5px solid var(--metal-dark-gray);
+      box-shadow: inset 0 0 20px rgba(0,0,0,.8);
+      clip-path: polygon(5% 0, 95% 0, 100% 10%, 100% 90%, 95% 100%, 5% 100%, 0 90%, 0 10%);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    #top-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    #top-screen::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 60%);
+      animation: screen-flicker 15s infinite linear;
+    }
+    @keyframes screen-flicker {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(5px, 5px); }
+      50% { transform: translate(-5px, 0); }
+      75% { transform: translate(0, -5px); }
+      100% { transform: translate(0, 0); }
+    }
+    .screen-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      z-index: 2;
+      position: relative;
+    }
+    #login-screen button, #lobby-screen button, .modal button {
+      background: var(--metal-mid-gray);
+      border: 2px solid var(--metal-light-gray);
+      color: var(--metal-silver);
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all .2s;
+      margin: 5px;
+      font-size: 1rem;
+    }
+    #login-screen button:hover, #lobby-screen button:hover, .modal button:hover {
+      background: var(--glow-blue);
+      border-color: var(--metal-silver);
+    }
+    #login-screen input {
+      background: var(--metal-dark-gray);
+      border: 1px solid var(--metal-mid-gray);
+      color: var(--metal-silver);
+      padding: 10px;
+      border-radius: 5px;
+      margin: 5px 0;
+      width: 80%;
+      max-width: 300px;
+    }
+    #lobby-screen ul {
+      list-style: none;
+      width: 90%;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,.3);
+      border: 1px solid var(--metal-mid-gray);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #lobby-screen li {
+      padding: 8px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--metal-mid-gray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #lobby-screen li:hover {
+      background-color: var(--glow-blue);
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 10px;
+    }
+    .status-online { background-color: var(--glow-green); }
+    .status-ingame { background-color: var(--glow-red); }
+    #control-panel {
+      padding-top: 20px;
+    }
+    #button-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .control-button {
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      border: 3px solid var(--metal-dark-gray);
+      background: linear-gradient(145deg, var(--metal-mid-gray), var(--metal-dark-gray));
+      box-shadow: -5px -5px 10px rgba(255,255,255,.1), 5px 5px 10px rgba(0,0,0,.5), inset 0 0 5px rgba(0,0,0,.5);
+      font-size: 3rem;
+      cursor: pointer;
+      transition: all .2s ease-out;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+    }
+    .control-button:hover:not(:disabled) {
+      transform: translateY(-5px);
+      box-shadow: -5px -5px 15px rgba(52, 152, 219, .5), 5px 5px 15px rgba(0,0,0,.7), inset 0 0 10px rgba(52, 152, 219, .3);
+      filter: brightness(1.2);
+    }
+    .control-button.selected {
+      transform: translateY(2px);
+      background: var(--glow-blue);
+      box-shadow: 0 0 20px var(--glow-blue), inset 0 0 10px rgba(255,255,255,.5);
+      color: white;
+    }
+    .control-button:active:not(:disabled) {
+      transform: translateY(2px);
+      filter: brightness(0.9);
+    }
+    .control-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      filter: grayscale(80%);
+    }
+    #game-screen-content {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+    #game-info {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      padding: 5px 0;
+      background: rgba(0,0,0,.5);
+      border-radius: 5px;
+      font-size: .8rem;
+    }
+    .player-info { text-align: center; }
+    #video-streams {
+      flex-grow: 1;
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 0;
+      min-height: 0;
+    }
+    .video-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      border: 2px solid var(--metal-mid-gray);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: inset 0 0 10px #000;
+    }
+    .video-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #local-video {
+      transform: scaleX(-1);
+    }
+    .video-label {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0,0,0,.7);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: .7rem;
+      z-index: 5;
+    }
+    #game-status-display {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,.85);
+      z-index: 10;
+      padding: 20px;
+    }
+    #game-status-text {
+      font-size: 3rem;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 0 20px var(--glow-blue);
+      animation: pulse 1.5s infinite;
+      margin-bottom: 20px;
+    }
+    #game-choices-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      margin: 20px 0;
+    }
+    .choice-item {
+      text-align: center;
+    }
+    .choice-emoji {
+      font-size: 4rem;
+      margin-bottom: 10px;
+    }
+    .choice-label {
+      font-size: 1rem;
+      color: var(--metal-light-gray);
+    }
+    .vs-text {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--glow-yellow);
+    }
+    #winner-display {
+      font-size: 1.5rem;
+      margin-top: 20px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.5);
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: .8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .result-win { text-shadow: 0 0 20px var(--glow-green) !important; color: var(--glow-green) !important; }
+    .result-lose { text-shadow: 0 0 20px var(--glow-red) !important; color: var(--glow-red) !important; }
+    .result-draw { text-shadow: 0 0 20px var(--metal-silver) !important; color: var(--metal-silver) !important; }
+    .modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(145deg, #4d5c6b, #2f3a46);
+      border: 2px solid var(--metal-silver);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 30px rgba(0,0,0,.7);
+      z-index: 100;
+      width: 90%;
+      max-width: 400px;
+    }
+    .modal-content {
+      text-align: center;
+    }
+    .modal input {
+      width: 100px;
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 10px auto;
+      display: block;
+      background: var(--metal-dark-gray);
+      border: 1px solid var(--metal-mid-gray);
+      color: var(--metal-silver);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    @media (max-width: 600px) {
+      #game-status-text { font-size: 2rem; }
+      .choice-emoji { font-size: 3rem; }
+      .vs-text { font-size: 1.5rem; }
+      #winner-display { font-size: 1.2rem; }
+    }
+  </style>
 </head>
 <body>
-    <div id="app-container">
-        <div id="game-machine">
-            <div id="top-screen">
-                <div id="login-screen" class="screen-content">
-                    <h2>Metal RPS Arena</h2>
-                    <input type="email" id="email" placeholder="Email" autocomplete="email">
-                    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
-                    <button id="login-btn">Login</button>
-                    <button id="signup-btn">Sign Up</button>
-                    <p>or</p>
-                    <button id="google-login-btn">Sign In with Google</button>
-                    <p id="auth-error" class="hidden" style="color: var(--glow-red);"></p>
-                </div>
+  <div id="app-container">
+    <div id="game-machine">
+      <div id="top-screen">
 
-                <div id="lobby-screen" class="screen-content hidden">
-                    <h3>Lobby</h3>
-                    <div id="user-info" style="margin-bottom: 10px;">
-                        <span id="user-display-name"></span> - 💰<span id="user-wallet"></span> coins
-                    </div>
-                    <h4>Online Players:</h4>
-                    <ul id="players-list"></ul>
-                    <button id="logout-btn">Logout</button>
-                </div>
-
-                <div id="game-screen" class="screen-content hidden">
-                    <div id="game-screen-content">
-                        <div id="game-info">
-                            <div class="player-info">
-                                <span id="local-player-name">You</span><br>
-                                💰<span id="local-player-wallet">0</span>
-                            </div>
-                            <div class="player-info">
-                                Pot: 💰<span id="game-bet-amount">0</span>
-                            </div>
-                            <div class="player-info">
-                                <span id="remote-player-name">Opponent</span><br>
-                                💰<span id="remote-player-wallet">0</span>
-                            </div>
-                        </div>
-                        <div id="video-streams">
-                            <div class="video-container">
-                                <div class="video-label">You</div>
-                                <video id="local-video" autoplay muted playsinline></video>
-                            </div>
-                            <div class="video-container">
-                                <div class="video-label">Opponent</div>
-                                <video id="remote-video" autoplay playsinline></video>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="game-status-display" class="hidden">
-                    <h1 id="game-status-text"></h1>
-                    <div id="game-choices-display" class="hidden">
-                        <div class="choice-item">
-                            <div class="choice-emoji" id="player1-choice-emoji"></div>
-                            <div class="choice-label" id="player1-choice-label"></div>
-                        </div>
-                        <div class="vs-text">VS</div>
-                        <div class="choice-item">
-                            <div class="choice-emoji" id="player2-choice-emoji"></div>
-                            <div class="choice-label" id="player2-choice-label"></div>
-                        </div>
-                    </div>
-                    <div id="winner-display" class="hidden"></div>
-                </div>
-
-                <div id="modal-container"></div>
-            </div>
-            <div id="control-panel">
-                <div id="button-grid">
-                    <button class="control-button" id="rock-btn" data-choice="rock">🪨</button>
-                    <button class="control-button" id="paper-btn" data-choice="paper">📄</button>
-                    <button class="control-button" id="scissors-btn" data-choice="scissors">✂️</button>
-                </div>
-            </div>
+        <!-- LOGIN -->
+        <div id="login-screen" class="screen-content">
+          <h2>Metal RPS Arena</h2>
+          <form id="login-form" autocomplete="off">
+            <input type="email" id="email" placeholder="Email" autocomplete="email" required>
+            <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+            <button type="submit">Login</button>
+          </form>
+          <button id="google-login-btn">Sign In with Google</button>
+          <p id="auth-error" class="hidden" style="color: var(--glow-red); margin-top: 10px;"></p>
         </div>
+
+        <!-- LOBBY -->
+        <div id="lobby-screen" class="screen-content hidden">
+          <h3>Lobby</h3>
+          <div id="user-info" style="margin-bottom: 10px;">
+            <span id="user-display-name"></span> - 💰<span id="user-wallet">0</span> coins
+          </div>
+          <h4>Online Players:</h4>
+          <ul id="players-list"></ul>
+          <button id="logout-btn">Logout</button>
+        </div>
+
+        <!-- GAME -->
+        <div id="game-screen" class="screen-content hidden">
+          <div id="game-screen-content">
+            <div id="game-info">
+              <div class="player-info">
+                <span id="local-player-name">You</span><br>
+                💰<span id="local-player-wallet">0</span>
+              </div>
+              <div class="player-info">
+                Pot: 💰<span id="game-bet-amount">0</span>
+              </div>
+              <div class="player-info">
+                <span id="remote-player-name">Opponent</span><br>
+                💰<span id="remote-player-wallet">0</span>
+              </div>
+            </div>
+            <div id="video-streams">
+              <div class="video-container">
+                <div class="video-label">You</div>
+                <video id="local-video" autoplay muted playsinline></video>
+              </div>
+              <div class="video-container">
+                <div class="video-label">Opponent</div>
+                <video id="remote-video" autoplay playsinline></video>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATUS OVERLAY -->
+        <div id="game-status-display" class="hidden">
+          <h1 id="game-status-text"></h1>
+          <div id="game-choices-display" class="hidden">
+            <div class="choice-item">
+              <div class="choice-emoji" id="player1-choice-emoji"></div>
+              <div class="choice-label" id="player1-choice-label"></div>
+            </div>
+            <div class="vs-text">VS</div>
+            <div class="choice-item">
+              <div class="choice-emoji" id="player2-choice-emoji"></div>
+              <div class="choice-label" id="player2-choice-label"></div>
+            </div>
+          </div>
+          <div id="winner-display" class="hidden"></div>
+        </div>
+
+        <!-- MODALS -->
+        <div id="modal-container"></div>
+
+      </div>
+
+      <!-- CONTROLES -->
+      <div id="control-panel">
+        <div id="button-grid">
+          <button class="control-button" id="rock-btn" data-choice="rock">🪨</button>
+          <button class="control-button" id="paper-btn" data-choice="paper">📄</button>
+          <button class="control-button" id="scissors-btn" data-choice="scissors">✂️</button>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <!-- FIREBASE + PEERJS -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
-    <script type="module">
-        const firebaseConfig = {
-            apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
-            authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
-            databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
-            projectId: "piedra-papel-o-tijeras-5ae53",
-            storageBucket: "piedra-papel-o-tijeras-5ae53.appspot.com",
-            messagingSenderId: "394850327081",
-            appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
-            measurementId: "G-C3VE5H0Y3S"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
-        const googleProvider = new firebase.auth.GoogleAuthProvider();
+  <script type="module">
+    // ===== CONFIGURACIÓN FIREBASE =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCjdjNpyDG1wXGyxG65Pa0jlehVGW52u_Y",
+      authDomain: "piedra-papel-o-tijeras-5ae53.firebaseapp.com",
+      databaseURL: "https://piedra-papel-o-tijeras-5ae53-default-rtdb.firebaseio.com",
+      projectId: "piedra-papel-o-tijeras-5ae53",
+      storageBucket: "piedra-papel-o-tijeras-5ae53.appspot.com",
+      messagingSenderId: "394850327081",
+      appId: "1:394850327081:web:96d0e21ce3bf4e67da1a38",
+      measurementId: "G-C3VE5H0Y3S"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        let appState = {
-            currentUser: null,
-            currentUserProfile: null,
-            currentGameId: null,
-            localStream: null,
-            peer: null,
-            isGameCreator: false,
-            playerChoice: null,
-            activeGameListener: null,
-            pendingInvitation: null, 
-            activeInvitationListener: null,
-            remotePeerId: null,
-        };
+    // ===== ESTADO GLOBAL =====
+    const appState = {
+      currentUser: null,
+      currentUserProfile: null,
+      currentGameId: null,
+      localStream: null,
+      peer: null,
+      isGameCreator: false,
+      playerChoice: null,
+      activeGameListener: null,
+      pendingInvitation: null,
+      activeInvitationListener: null,
+      remotePeerId: null,
+    };
 
-        const dom = {
-            loginScreen: document.getElementById('login-screen'),
-            lobbyScreen: document.getElementById('lobby-screen'),
-            gameScreen: document.getElementById('game-screen'),
-            authError: document.getElementById('auth-error'),
-            playersList: document.getElementById('players-list'),
-            userDisplayName: document.getElementById('user-display-name'),
-            userWallet: document.getElementById('user-wallet'),
-            modalContainer: document.getElementById('modal-container'),
-            controlButtons: document.querySelectorAll('.control-button'),
-            gameStatusDisplay: document.getElementById('game-status-display'),
-            gameStatusText: document.getElementById('game-status-text'),
-            gameChoicesDisplay: document.getElementById('game-choices-display'),
-            player1ChoiceEmoji: document.getElementById('player1-choice-emoji'),
-            player1ChoiceLabel: document.getElementById('player1-choice-label'),
-            player2ChoiceEmoji: document.getElementById('player2-choice-emoji'),
-            player2ChoiceLabel: document.getElementById('player2-choice-label'),
-            winnerDisplay: document.getElementById('winner-display'),
-            localVideo: document.getElementById('local-video'),
-            remoteVideo: document.getElementById('remote-video'),
-            localPlayerName: document.getElementById('local-player-name'),
-            remotePlayerName: document.getElementById('remote-player-name'),
-            localPlayerWallet: document.getElementById('local-player-wallet'),
-            remotePlayerWallet: document.getElementById('remote-player-wallet'),
-            gameBetAmount: document.getElementById('game-bet-amount'),
-        };
+    // ===== REFERENCIAS DOM =====
+    const dom = {
+      loginScreen: document.getElementById('login-screen'),
+      lobbyScreen: document.getElementById('lobby-screen'),
+      gameScreen: document.getElementById('game-screen'),
+      authError: document.getElementById('auth-error'),
+      playersList: document.getElementById('players-list'),
+      userDisplayName: document.getElementById('user-display-name'),
+      userWallet: document.getElementById('user-wallet'),
+      modalContainer: document.getElementById('modal-container'),
+      controlButtons: document.querySelectorAll('.control-button'),
+      gameStatusDisplay: document.getElementById('game-status-display'),
+      gameStatusText: document.getElementById('game-status-text'),
+      gameChoicesDisplay: document.getElementById('game-choices-display'),
+      player1ChoiceEmoji: document.getElementById('player1-choice-emoji'),
+      player1ChoiceLabel: document.getElementById('player1-choice-label'),
+      player2ChoiceEmoji: document.getElementById('player2-choice-emoji'),
+      player2ChoiceLabel: document.getElementById('player2-choice-label'),
+      winnerDisplay: document.getElementById('winner-display'),
+      localVideo: document.getElementById('local-video'),
+      remoteVideo: document.getElementById('remote-video'),
+      localPlayerName: document.getElementById('local-player-name'),
+      remotePlayerName: document.getElementById('remote-player-name'),
+      localPlayerWallet: document.getElementById('local-player-wallet'),
+      remotePlayerWallet: document.getElementById('remote-player-wallet'),
+      gameBetAmount: document.getElementById('game-bet-amount'),
+    };
 
-        const choiceEmojis = {
-            rock: '🪨',
-            paper: '📄',
-            scissors: '✂️'
-        };
+    const choiceEmojis = { rock: '🪨', paper: '📄', scissors: '✂️' };
 
-        const sounds = {
-            click: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAA//8/"),
-            countdown: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACEgD8/Pz9ISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhI////"),
-            alarm: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACIh0BAPz9AQEBAPz8/QEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz8/Pz8/Pz8="),
-            win: new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YRAAAAAA/gD+AP4A/gD+APgA+QD5APkA/AD4APkA+AD8APwA/gD+AP4AAAAA"),
-            lose: new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YRAAAAAA/gD+AP4A/AD4APkA+AD8APkA+QD4APwA/gD+AP4A/gAAAAA="),
-            draw: new Audio("data:audio/wav;base64,UklGRjAAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQ4AAAAA/gD+AP4A/AD4APgA/AD+AP4AAAAA"),
-            play: (sound) => {
-                try {
-                    sounds[sound].currentTime = 0;
-                    sounds[sound].play().catch(e => {});
-                } catch (e) {}
-            }
-        };
+    // ===== SONIDOS =====
+    const sounds = {
+      click: new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAA//8/"),
+      countdown: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACEgD8/Pz9ISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhI////"),
+      alarm: new Audio("data:audio/wav;base64,UklGRlIAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YUgAAACIh0BAPz9AQEBAPz8/QEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz9AQEBAPz8/Pz8/Pz8="),
+      win: new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YRAAAAAA/gD+AP4A/gD+APgA+QD5APkA/AD4APkA+AD8APwA/gD+AP4AAAAA"),
+      lose: new Audio("data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YRAAAAAA/gD+AP4A/AD4APkA+AD8APkA+QD4APwA/gD+AP4A/gAAAAA="),
+      draw: new Audio("data:audio/wav;base64,UklGRjAAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQ4AAAAA/gD+AP4A/AD4APgA/AD+AP4AAAAA"),
+      play(sound) {
+        try { this[sound].currentTime = 0; this[sound].play().catch(()=>{}); } catch {}
+      }
+    };
 
-        const ui = {
-            showScreen: (screen) => {
-                [dom.loginScreen, dom.lobbyScreen, dom.gameScreen].forEach(s => s.classList.add('hidden'));
-                if(screen) screen.classList.remove('hidden');
-            },
-            showAuthError: (message) => {
-                dom.authError.textContent = message;
-                dom.authError.classList.remove('hidden');
-            },
-            hideAuthError: () => dom.authError.classList.add('hidden'),
-            renderPlayers: (players) => {
-                console.log("🎨 Renderizando usuarios:", players);
-                dom.playersList.innerHTML = '';
-                
-                const playerArray = Object.entries(players);
-                console.log("📋 Array de jugadores:", playerArray);
-                
-                if (playerArray.length === 0) {
-                    console.log("⚠️ No hay jugadores activos");
-                    dom.playersList.innerHTML = '<li style="text-align: center; color: var(--metal-light-gray);">No hay jugadores online</li>';
-                    return;
-                }
-                
-                playerArray.forEach(([uid, player]) => {
-                    if (uid === appState.currentUser.uid || !player) return;
-                    
-                    console.log("👤 Procesando jugador:", player.displayName, "Status:", player.status);
-                    
-                    const li = document.createElement('li');
-                    const statusClass = player.status === 'online' ? 'status-online' : 'status-ingame';
-                    const statusText = player.status === 'online' ? 'Online' : 'En juego';
-                    
-                    li.innerHTML = `
-                        <span>
-                            <span class="status-dot ${statusClass}"></span>
-                            ${player.displayName || 'Sin nombre'}
-                        </span>
-                        <span>💰${player.wallet || 0}</span>
-                    `;
-                    
-                    if (player.status === 'online') {
-                        li.style.cursor = 'pointer';
-                        li.onclick = () => ui.showChallengeModal(uid, player.displayName || 'Jugador');
-                    } else {
-                        li.style.cursor = 'not-allowed';
-                        li.style.opacity = '0.5';
-                    }
-                    
-                    dom.playersList.appendChild(li);
-                });
-                
-                console.log("✅ Usuarios renderizados:", playerArray.length);
-            },
-            updateLobbyHeader: () => {
-                if(appState.currentUserProfile) {
-                    dom.userDisplayName.textContent = appState.currentUserProfile.displayName;
-                    dom.userWallet.textContent = appState.currentUserProfile.wallet;
-                }
-            },
-            showChallengeModal: (opponentId, opponentName) => {
-                const modalHTML = `
-                    <div class="modal" id="challenge-modal">
-                        <div class="modal-content">
-                            <h3>Challenge ${opponentName}</h3>
-                            <p>Enter bet amount (min 5):</p>
-                            <input type="number" id="bet-amount-input" value="5" min="5">
-                            <button id="send-challenge-btn">Send Challenge</button>
-                            <button id="cancel-challenge-btn">Cancel</button>
-                        </div>
-                    </div>
-                `;
-                dom.modalContainer.innerHTML = modalHTML;
-                document.getElementById('send-challenge-btn').onclick = () => {
-                    const betAmount = parseInt(document.getElementById('bet-amount-input').value);
-                    if (betAmount >= 5 && betAmount <= appState.currentUserProfile.wallet) {
-                        game.sendInvitation(opponentId, opponentName, betAmount);
-                        ui.hideModal();
-                    } else {
-                        alert("Invalid bet amount. Check your wallet balance or the minimum bet.");
-                    }
-                };
-                document.getElementById('cancel-challenge-btn').onclick = ui.hideModal;
-            },
-            showInvitationModal: (invitationSnap) => {
-                if (document.getElementById('invitation-modal')) return;
-                const invitation = invitationSnap.val();
-                if (!invitation) return; 
-                const invitationRef = invitationSnap.ref;
-
-                const modalHTML = `
-                    <div class="modal" id="invitation-modal">
-                        <div class="modal-content">
-                            <h3>Incoming Challenge!</h3>
-                            <p>${invitation.fromName} challenges you to a game for 💰${invitation.bet} coins!</p>
-                            <button id="accept-challenge-btn">Accept</button>
-                            <button id="decline-challenge-btn">Decline</button>
-                        </div>
-                    </div>
-                `;
-                dom.modalContainer.innerHTML = modalHTML;
-                
-                document.getElementById('accept-challenge-btn').onclick = () => {
-                    game.acceptInvitation(invitation.gameId, invitationRef);
-                    ui.hideModal(); 
-                };
-
-                document.getElementById('decline-challenge-btn').onclick = () => {
-                    game.declineInvitation(invitation.gameId, invitationRef);
-                    ui.hideModal();
-                };
-            },
-            showWaitingModal: (opponentName) => {
-                const modalHTML = `
-                    <div class="modal" id="waiting-modal">
-                        <div class="modal-content">
-                            <h3>Invitation Sent</h3>
-                            <p>Waiting for ${opponentName} to respond...</p>
-                            <button id="cancel-invitation-btn">Cancel Invitation</button>
-                        </div>
-                    </div>
-                `;
-                dom.modalContainer.innerHTML = modalHTML;
-                document.getElementById('cancel-invitation-btn').onclick = game.cancelInvitation;
-            },
-            hideModal: () => {
-                dom.modalContainer.innerHTML = '';
-            },
-            showGameStatus: (text, type = '', duration = 0) => {
-                dom.gameStatusText.textContent = text;
-                dom.gameStatusText.className = type ? `result-${type}` : '';
-                dom.gameStatusDisplay.classList.remove('hidden');
-                dom.gameChoicesDisplay.classList.add('hidden');
-                dom.winnerDisplay.classList.add('hidden');
-                if(duration > 0) {
-                    setTimeout(() => dom.gameStatusDisplay.classList.add('hidden'), duration);
-                }
-            },
-            hideGameStatus: () => {
-                dom.gameStatusDisplay.classList.add('hidden');
-                dom.gameChoicesDisplay.classList.add('hidden');
-                dom.winnerDisplay.classList.add('hidden');
-            },
-            showGameResult: (gameData, myChoice, opponentChoice, winnerChoice) => {
-                const myUid = appState.currentUser.uid;
-                const amP1 = gameData.players.p1.uid === myUid;
-                
-                dom.player1ChoiceEmoji.textContent = choiceEmojis[myChoice];
-                dom.player1ChoiceLabel.textContent = `You: ${myChoice.toUpperCase()}`;
-                
-                dom.player2ChoiceEmoji.textContent = choiceEmojis[opponentChoice];
-                dom.player2ChoiceLabel.textContent = `Opponent: ${opponentChoice.toUpperCase()}`;
-                
-                dom.gameChoicesDisplay.classList.remove('hidden');
-                
-                let resultText, resultClass, winnerName;
-                if (winnerChoice === null) {
-                    resultText = "It's a Draw!";
-                    resultClass = "draw";
-                    winnerName = "Nobody wins";
-                } else if (myChoice === winnerChoice) {
-                    resultText = "YOU WIN!";
-                    resultClass = "win";
-                    winnerName = `Winner: ${appState.currentUserProfile.displayName}`;
-                } else {
-                    resultText = "YOU LOSE!";
-                    resultClass = "lose";
-                    const opponentName = amP1 ? gameData.players.p2.displayName : gameData.players.p1.displayName;
-                    winnerName = `Winner: ${opponentName}`;
-                }
-                
-                dom.gameStatusText.textContent = resultText;
-                dom.gameStatusText.className = `result-${resultClass}`;
-                
-                dom.winnerDisplay.textContent = winnerName;
-                dom.winnerDisplay.className = `result-${resultClass}`;
-                dom.winnerDisplay.classList.remove('hidden');
-                
-                dom.gameStatusDisplay.classList.remove('hidden');
-            },
-            resetControlButtons: (disabled = false) => {
-                dom.controlButtons.forEach(btn => {
-                    btn.classList.remove('selected');
-                    btn.disabled = disabled;
-                });
-            },
-            updateGameInfo: (gameData) => {
-                if (!gameData || !gameData.players) return;
-                const myUid = appState.currentUser.uid;
-                const p1Data = gameData.players.p1;
-                const p2Data = gameData.players.p2;
-                const amP1 = p1Data.uid === myUid;
-                const localPlayer = amP1 ? p1Data : p2Data;
-                const remotePlayer = amP1 ? p2Data : p1Data;
-                dom.localPlayerName.textContent = localPlayer.displayName;
-                dom.localPlayerWallet.textContent = localPlayer.wallet;
-                dom.remotePlayerName.textContent = remotePlayer.displayName;
-                dom.remotePlayerWallet.textContent = remotePlayer.wallet;
-                dom.gameBetAmount.textContent = gameData.bet * 2;
-            }
-        };
-
-        const authManager = {
-            init: () => {
-                document.getElementById('login-btn').addEventListener('click', authManager.login);
-                document.getElementById('signup-btn').addEventListener('click', authManager.signup);
-                document.getElementById('google-login-btn').addEventListener('click', authManager.googleLogin);
-                document.getElementById('logout-btn').addEventListener('click', authManager.logout);
-                
-                auth.onAuthStateChanged(user => {
-                    if (user) {
-                        console.log("✅ Usuario autenticado:", user.uid);
-                        appState.currentUser = user;
-                        dbManager.onUserConnect();
-                        dbManager.listenToProfile(user.uid);
-                        dbManager.listenToPlayers();
-                        dbManager.listenForInvitations(user.uid);
-                        ui.showScreen(dom.lobbyScreen);
-                    } else {
-                        appState.currentUser = null;
-                        appState.currentUserProfile = null;
-                        ui.showScreen(dom.loginScreen);
-                    }
-                });
-            },
-            login: () => auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(e => ui.showAuthError(e.message)),
-            signup: () => auth.createUserWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).then(cred => dbManager.createUserProfile(cred.user)).catch(e => ui.showAuthError(e.message)),
-            googleLogin: () => auth.signInWithPopup(googleProvider).then(result => { if (result.additionalUserInfo.isNewUser) { dbManager.createUserProfile(result.user); }}).catch(e => ui.showAuthError(e.message)),
-            logout: () => auth.signOut(),
-        };
-
-        const dbManager = {
-            createUserProfile: (user) => db.ref(`users/${user.uid}`).set({ uid: user.uid, displayName: user.displayName || user.email.split('@')[0], email: user.email, wallet: 100, status: 'online'}),
-            onUserConnect: () => {
-                const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
-                db.ref('.info/connected').on('value', snap => {
-                    if (snap.val() === false) return;
-                    userStatusRef.onDisconnect().set('offline').then(() => {
-                        userStatusRef.set('online');
-                    });
-                });
-            },
-            updateUserStatus: (status) => { if(appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status); },
-            listenToProfile: (uid) => db.ref(`users/${uid}`).on('value', snap => { appState.currentUserProfile = snap.val(); ui.updateLobbyHeader(); }),
-            listenToPlayers: () => {
-                console.log("🔍 Iniciando escucha de usuarios...");
-                
-                db.ref('users').on('value', snap => {
-                    const players = snap.val() || {};
-                    console.log("📊 Usuarios recibidos:", players);
-                    
-                    // Filtra usuarios online/ingame
-                    const activePlayers = {};
-                    Object.keys(players).forEach(uid => {
-                        if (players[uid] && (players[uid].status === 'online' || players[uid].status === 'ingame')) {
-                            activePlayers[uid] = players[uid];
-                        }
-                    });
-                    
-                    console.log("🟢 Usuarios activos:", activePlayers);
-                    ui.renderPlayers(activePlayers);
-                }, error => {
-                    console.error("❌ Error escuchando usuarios:", error);
-                });
-            },
-            listenForInvitations: (uid) => {
-                const invitationsRef = db.ref(`invitations/${uid}`);
-                invitationsRef.on('child_added', (snap) => {
-                    const invitation = snap.val();
-                    if (!invitation || !invitation.gameId) return;
-                    
-                    db.ref(`games/${invitation.gameId}`).once('value', (gameSnap) => {
-                        if (gameSnap.exists() && gameSnap.val().status === 'pending') {
-                            ui.showInvitationModal(snap);
-                        } else {
-                            snap.ref.remove();
-                        }
-                    });
-                });
-                
-                invitationsRef.on('child_removed', () => {
-                    if (document.getElementById('invitation-modal')) {
-                        ui.hideModal();
-                    }
-                });
-            }
-        };
-        
-        const webrtc = {
-            start: async () => {
-                try {
-                    const constraints = {
-                        video: {
-                            facingMode: 'user',
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        },
-                        audio: true
-                    };
-                    
-                    appState.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                    dom.localVideo.srcObject = appState.localStream;
-                    
-                    await dom.localVideo.play();
-                    
-                } catch (e) {
-                    console.error("WebRTC start failed:", e);
-                    alert("Could not access camera/microphone. Please check permissions and refresh.");
-                    game.leave();
-                    return;
-                }
-
-                // Usar PeerJS para conexiones más estables
-                appState.peer = new Peer();
-                
-                appState.peer.on('open', (id) => {
-                    console.log('My peer ID is: ' + id);
-                    
-                    const gameRef = db.ref(`games/${appState.currentGameId}`);
-                    const myPeerKey = appState.isGameCreator ? 'p1PeerId' : 'p2PeerId';
-                    gameRef.child(myPeerKey).set(id);
-                    
-                    const opponentPeerKey = appState.isGameCreator ? 'p2PeerId' : 'p1PeerId';
-                    gameRef.child(opponentPeerKey).on('value', (snap) => {
-                        if (snap.exists() && snap.val()) {
-                            appState.remotePeerId = snap.val();
-                            if (appState.remotePeerId !== id) {
-                                webrtc.connectToRemotePeer();
-                            }
-                        }
-                    });
-                });
-
-                appState.peer.on('call', (call) => {
-                    call.answer(appState.localStream);
-                    call.on('stream', (remoteStream) => {
-                        dom.remoteVideo.srcObject = remoteStream;
-                        dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
-                    });
-                });
-
-                appState.peer.on('error', (err) => {
-                    console.error('PeerJS error:', err);
-                });
-            },
-
-            connectToRemotePeer: () => {
-                if (!appState.remotePeerId || !appState.peer) return;
-                
-                const call = appState.peer.call(appState.remotePeerId, appState.localStream);
-                call.on('stream', (remoteStream) => {
-                    dom.remoteVideo.srcObject = remoteStream;
-                    dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
-                });
-                
-                call.on('error', (err) => {
-                    console.error('Call error:', err);
-                });
-            },
-            
-            stop: () => {
-                if (appState.localStream) {
-                    appState.localStream.getTracks().forEach(track => track.stop());
-                }
-                if (appState.peer) {
-                    appState.peer.destroy();
-                }
-                dom.localVideo.srcObject = null;
-                dom.remoteVideo.srcObject = null;
-                appState.localStream = null;
-                appState.peer = null;
-                appState.remotePeerId = null;
-            }
-        };
-        
-        const game = {
-            init: () => {
-                dom.controlButtons.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        if (btn.disabled) return;
-                        
-                        sounds.play('click');
-                        appState.playerChoice = e.currentTarget.dataset.choice;
-                        
-                        dom.controlButtons.forEach(b => {
-                            b.classList.remove('selected');
-                            b.disabled = true;
-                        });
-                        e.currentTarget.classList.add('selected');
-                        
-                        game.submitChoice();
-                    });
-                });
-                ui.resetControlButtons(true);
-            },
-            
-            sendInvitation: (opponentId, opponentName, bet) => {
-                if (bet > appState.currentUserProfile.wallet) {
-                    alert("You don't have enough coins for this bet!");
-                    return;
-                }
-
-                const gameId = db.ref('games').push().key;
-                const invitationKey = db.ref(`invitations/${opponentId}`).push().key;
-
-                appState.pendingInvitation = { gameId, opponentId, invitationKey };
-
-                const gameData = {
-                    bet,
-                    status: 'pending',
-                    players: {
-                        p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null },
-                        p2: { uid: opponentId, displayName: opponentName, wallet: 0, choice: null }
-                    },
-                };
-
-                const gameRef = db.ref(`games/${gameId}`);
-                const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
-
-                gameRef.set(gameData).then(() => {
-                    return invitationRef.set({ 
-                        gameId, 
-                        bet, 
-                        fromUid: appState.currentUser.uid,
-                        fromName: appState.currentUserProfile.displayName 
-                    });
-                }).then(() => {
-                    ui.showWaitingModal(opponentName);
-                    
-                    gameRef.onDisconnect().remove();
-                    invitationRef.onDisconnect().remove();
-
-                    appState.activeInvitationListener = gameRef.on('value', snap => {
-                        if (!snap.exists()) {
-                            game.cleanUpInvitationListeners();
-                            ui.hideModal();
-                            alert("The invitation was declined or cancelled.");
-                            return;
-                        }
-                        if (snap.val().status === 'active') {
-                            game.cleanUpInvitationListeners();
-                            game.join(gameId, true);
-                        }
-                    });
-                });
-            },
-
-            cancelInvitation: () => {
-                if (!appState.pendingInvitation) return;
-                const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
-                
-                const gameRef = db.ref(`games/${gameId}`);
-                const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
-                
-                if (appState.activeInvitationListener) {
-                    gameRef.off('value', appState.activeInvitationListener);
-                    appState.activeInvitationListener = null;
-                }
-                
-                gameRef.onDisconnect().cancel();
-                invitationRef.onDisconnect().cancel();
-                
-                gameRef.remove();
-                invitationRef.remove();
-                
-                appState.pendingInvitation = null;
-                ui.hideModal();
-            },
-
-            cleanUpInvitationListeners: () => {
-                if (!appState.pendingInvitation) return;
-                const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
-                const gameRef = db.ref(`games/${gameId}`);
-                const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
-                
-                if (appState.activeInvitationListener) {
-                    gameRef.off('value', appState.activeInvitationListener);
-                    appState.activeInvitationListener = null;
-                }
-                
-                gameRef.onDisconnect().cancel();
-                invitationRef.onDisconnect().cancel();
-                
-                appState.pendingInvitation = null;
-            },
-
-            declineInvitation: (gameId, invitationRef) => {
-                db.ref(`games/${gameId}`).remove();
-                if(invitationRef) invitationRef.remove();
-            },
-
-            acceptInvitation: async (gameId, invitationRef) => {
-                const gameRef = db.ref(`games/${gameId}`);
-                try {
-                    const gameSnap = await gameRef.once('value');
-                    if (!gameSnap.exists()) {
-                        alert("This game invitation no longer exists.");
-                        if (invitationRef) invitationRef.remove();
-                        return;
-                    }
-                    
-                    const gameData = gameSnap.val();
-                    if (gameData.status !== 'pending') {
-                        alert("This game is no longer available.");
-                        if (invitationRef) invitationRef.remove();
-                        return;
-                    }
-                    
-                    if (appState.currentUserProfile.wallet < gameData.bet) {
-                        alert("You don't have enough coins for this challenge!");
-                        game.declineInvitation(gameId, invitationRef);
-                        return;
-                    }
-                    
-                    const updates = {};
-                    updates[`games/${gameId}/status`] = 'active';
-                    updates[`games/${gameId}/players/p2/wallet`] = appState.currentUserProfile.wallet;
-                    
-                    await db.ref().update(updates);
-                    
-                    if (invitationRef) await invitationRef.remove();
-                    
-                    game.join(gameId, false);
-                    
-                } catch (error) {
-                    console.error("Error accepting invitation:", error);
-                    alert("An unexpected error occurred while joining the game.");
-                    if (invitationRef) invitationRef.remove();
-                }
-            },
-            
-            join: (gameId, isCreator) => {
-                appState.currentGameId = gameId;
-                appState.isGameCreator = isCreator;
-                dbManager.updateUserStatus('ingame');
-                ui.showScreen(dom.gameScreen);
-                ui.hideModal();
-                webrtc.start();
-
-                const gameRef = db.ref(`games/${gameId}`);
-                appState.activeGameListener = gameRef.on('value', (snap) => game.stateMachine(snap.val()));
-            },
-            
-            stateMachine: (gameData) => {
-                if (!gameData) {
-                    if (appState.currentGameId) {
-                        alert("The game has ended or the opponent disconnected.");
-                        game.leave();
-                    }
-                    return;
-                }
-                ui.updateGameInfo(gameData);
-                
-                switch (gameData.status) {
-                    case 'active':
-                        ui.showGameStatus("Connecting...", '', 0);
-                        if (appState.isGameCreator) {
-                            setTimeout(() => {
-                                if (!appState.currentGameId) return;
-                                db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
-                                    const signals = snap.val();
-                                    if(signals && signals.p1Signal && signals.p2Signal) {
-                                        game.startCountdown();
-                                    }
-                                });
-                            }, 2000);
-                        }
-                        break;
-                    case 'countdown':
-                        game.handleCountdown(gameData);
-                        break;
-                    case 'choose':
-                        const myPlayerKey = appState.isGameCreator ? 'p1' : 'p2';
-                        if (!gameData.players[myPlayerKey].choice) {
-                            ui.hideGameStatus();
-                            ui.resetControlButtons(false);
-                        } else {
-                            ui.showGameStatus("Waiting for opponent...", '', 0);
-                        }
-                        break;
-                    case 'reveal':
-                        ui.resetControlButtons(true);
-                        game.revealResult(gameData);
-                        break;
-                    case 'finished':
-                        if (!document.querySelector('.modal')) {
-                            setTimeout(() => {
-                                game.showPostGameOptions();
-                            }, 5000);
-                        }
-                        break;
-                }
-            },
-            
-            startCountdown: () => {
-                if (!appState.currentGameId) return;
-                
-                const gameRef = db.ref(`games/${appState.currentGameId}`);
-                gameRef.transaction(currentData => {
-                    if (currentData && currentData.status === 'active') {
-                        currentData.status = 'countdown';
-                        currentData.countdown = 3;
-                        return currentData;
-                    }
-                    return;
-                }).then(result => {
-                    if (!result.committed) return;
-                    let count = 3;
-                    const interval = setInterval(() => {
-                        count--;
-                        if (count >= 0) {
-                            db.ref(`games/${appState.currentGameId}/countdown`).set(count);
-                        }
-                        if (count < 0) {
-                            clearInterval(interval);
-                            db.ref(`games/${appState.currentGameId}/status`).set('choose');
-                        }
-                    }, 1000);
-                });
-            },
-            
-            handleCountdown: (gameData) => {
-                const count = gameData.countdown;
-                if (count > 0) {
-                    ui.showGameStatus(count);
-                    sounds.play('countdown');
-                } else if (count === 0) {
-                    ui.showGameStatus("CHOOSE NOW!");
-                    sounds.play('alarm');
-                    setTimeout(() => {
-                        ui.hideGameStatus();
-                        appState.playerChoice = null;
-                        ui.resetControlButtons(false);
-                    }, 1000);
-                }
-            },
-            
-            submitChoice: () => {
-                if(!appState.currentGameId || !appState.playerChoice) return;
-                const playerKey = appState.isGameCreator ? 'p1' : 'p2';
-                db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
-                    ui.showGameStatus("Choice locked! Waiting for opponent...", '', 0);
-                    
-                    db.ref(`games/${appState.currentGameId}/players`).once('value', (snap) => {
-                        const players = snap.val();
-                        if (players.p1.choice && players.p2.choice && appState.isGameCreator) {
-                            setTimeout(() => {
-                                db.ref(`games/${appState.currentGameId}/status`).set('reveal');
-                            }, 500);
-                        }
-                    });
-                });
-            },
-            
-            revealResult: (gameData) => {
-                const { p1, p2 } = gameData.players;
-                if(!p1.choice || !p2.choice) return;
-
-                const myUid = appState.currentUser.uid;
-                const amP1 = p1.uid === myUid;
-                const myChoice = amP1 ? p1.choice : p2.choice;
-                const opponentChoice = amP1 ? p2.choice : p1.choice;
-                
-                const winnerChoice = game.getWinner(p1.choice, p2.choice);
-
-                setTimeout(() => {
-                    ui.showGameResult(gameData, myChoice, opponentChoice, winnerChoice);
-                    
-                    if (winnerChoice === null) {
-                        sounds.play('draw');
-                    } else if (myChoice === winnerChoice) {
-                        sounds.play('win');
-                    } else {
-                        sounds.play('lose');
-                    }
-                }, 1000);
-                
-                if (appState.isGameCreator) {
-                    setTimeout(() => {
-                        game.updateWalletsAndFinish(gameData, winnerChoice, p1.uid, p2.uid);
-                    }, 2000);
-                }
-            },
-            
-            getWinner: (c1, c2) => {
-                if (c1 === c2) return null;
-                if ((c1 === 'rock' && c2 === 'scissors') || 
-                    (c1 === 'scissors' && c2 === 'paper') || 
-                    (c1 === 'paper' && c2 === 'rock')) {
-                    return c1;
-                }
-                return c2;
-            },
-            
-            updateWalletsAndFinish: async (gameData, winnerChoice, p1Id, p2Id) => {
-                if (winnerChoice === null) {
-                    // Es un empate, no se actualizan wallets
-                    await db.ref(`games/${appState.currentGameId}/status`).set('finished');
-                    return;
-                }
-                
-                const { bet } = gameData;
-                const p1Won = gameData.players.p1.choice === winnerChoice;
-                const winnerId = p1Won ? p1Id : p2Id;
-                const loserId = p1Won ? p2Id : p1Id;
-                
-                try {
-                    // Actualizar wallets usando transacciones para mayor seguridad
-                    const winnerRef = db.ref(`users/${winnerId}/wallet`);
-                    const loserRef = db.ref(`users/${loserId}/wallet`);
-
-                    await winnerRef.transaction(wallet => (wallet || 0) + bet);
-                    await loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet));
-                    
-                    console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
-                    
-                    // Marcar juego como terminado
-                    await db.ref(`games/${appState.currentGameId}/status`).set('finished');
-                    
-                } catch (error) {
-                    console.error("Error updating wallets:", error);
-                }
-            },
-            
-            showPostGameOptions: () => {
-                const modalHTML = `
-                    <div class="modal">
-                        <div class="modal-content">
-                            <h3>Game Over</h3>
-                            <p>Check your updated balance!</p>
-                            <button id="exit-game-btn">Exit to Lobby</button>
-                        </div>
-                    </div>`;
-                dom.modalContainer.innerHTML = modalHTML;
-                document.getElementById('exit-game-btn').onclick = () => {
-                     if (appState.isGameCreator) {
-                        db.ref(`games/${appState.currentGameId}`).remove();
-                     } else {
-                        game.leave();
-                     }
-                }
-            },
-            
-            leave: () => {
-                ui.hideModal();
-                webrtc.stop();
-                
-                if (appState.currentGameId && appState.activeGameListener) {
-                    db.ref(`games/${appState.currentGameId}`).off('value', appState.activeGameListener);
-                }
-                
-                if(appState.pendingInvitation) game.cleanUpInvitationListeners(); 
-
-                dbManager.updateUserStatus('online');
-                appState.currentGameId = null;
-                appState.isGameCreator = false;
-                appState.activeGameListener = null;
-                appState.playerChoice = null;
-                ui.showScreen(dom.lobbyScreen);
-                ui.hideGameStatus();
-                ui.resetControlButtons(true);
-            }
-        };
-
-        function init() {
-            console.log("Initializing Metal RPS Arena...");
-            authManager.init();
-            game.init();
+    // ===== UI =====
+    const ui = {
+      showScreen(screen) {
+        [dom.loginScreen, dom.lobbyScreen, dom.gameScreen].forEach(s => s.classList.add('hidden'));
+        if (screen) screen.classList.remove('hidden');
+      },
+      showAuthError(msg) {
+        dom.authError.textContent = msg;
+        dom.authError.classList.remove('hidden');
+      },
+      hideAuthError() {
+        dom.authError.classList.add('hidden');
+      },
+      renderPlayers(players) {
+        dom.playersList.innerHTML = '';
+        const arr = Object.entries(players);
+        if (arr.length === 0) {
+          dom.playersList.innerHTML = '<li style="text-align:center;color:var(--metal-light-gray);">No hay jugadores online</li>';
+          return;
         }
+        arr.forEach(([uid, p]) => {
+          if (uid === appState.currentUser?.uid || !p) return;
+          const li = document.createElement('li');
+          const statusClass = p.status === 'online' ? 'status-online' : 'status-ingame';
+          li.innerHTML = `
+            <span><span class="status-dot ${statusClass}"></span>${p.displayName || 'Sin nombre'}</span>
+            <span>💰${p.wallet || 0}</span>`;
+          if (p.status === 'online') {
+            li.style.cursor = 'pointer';
+            li.onclick = () => ui.showChallengeModal(uid, p.displayName || 'Jugador');
+          } else {
+            li.style.cursor = 'not-allowed';
+            li.style.opacity = '.5';
+          }
+          dom.playersList.appendChild(li);
+        });
+      },
+      updateLobbyHeader() {
+        if (appState.currentUserProfile) {
+          dom.userDisplayName.textContent = appState.currentUserProfile.displayName;
+          dom.userWallet.textContent = appState.currentUserProfile.wallet;
+        }
+      },
+      showChallengeModal(opponentId, opponentName) {
+        const modalHTML = `
+          <div class="modal" id="challenge-modal">
+            <div class="modal-content">
+              <h3>Challenge ${opponentName}</h3>
+              <p>Enter bet amount (min 5):</p>
+              <input type="number" id="bet-amount-input" value="5" min="5">
+              <button id="send-challenge-btn">Send Challenge</button>
+              <button id="cancel-challenge-btn">Cancel</button>
+            </div>
+          </div>`;
+        dom.modalContainer.innerHTML = modalHTML;
+        document.getElementById('send-challenge-btn').onclick = () => {
+          const bet = parseInt(document.getElementById('bet-amount-input').value);
+          if (bet >= 5 && bet <= appState.currentUserProfile.wallet) {
+            game.sendInvitation(opponentId, opponentName, bet);
+            ui.hideModal();
+          } else {
+            alert("Invalid bet amount or insufficient coins.");
+          }
+        };
+        document.getElementById('cancel-challenge-btn').onclick = ui.hideModal;
+      },
+      showInvitationModal(invitationSnap) {
+        if (document.getElementById('invitation-modal')) return;
+        const inv = invitationSnap.val();
+        if (!inv) return;
+        const modalHTML = `
+          <div class="modal" id="invitation-modal">
+            <div class="modal-content">
+              <h3>Incoming Challenge!</h3>
+              <p>${inv.fromName} challenges you for 💰${inv.bet} coins!</p>
+              <button id="accept-challenge-btn">Accept</button>
+              <button id="decline-challenge-btn">Decline</button>
+            </div>
+          </div>`;
+        dom.modalContainer.innerHTML = modalHTML;
+        document.getElementById('accept-challenge-btn').onclick = () => {
+          game.acceptInvitation(inv.gameId, invitationSnap.ref);
+          ui.hideModal();
+        };
+        document.getElementById('decline-challenge-btn').onclick = () => {
+          game.declineInvitation(inv.gameId, invitationSnap.ref);
+          ui.hideModal();
+        };
+      },
+      showWaitingModal(opponentName) {
+        const modalHTML = `
+          <div class="modal" id="waiting-modal">
+            <div class="modal-content">
+              <h3>Invitation Sent</h3>
+              <p>Waiting for ${opponentName} to respond...</p>
+              <button id="cancel-invitation-btn">Cancel Invitation</button>
+            </div>
+          </div>`;
+        dom.modalContainer.innerHTML = modalHTML;
+        document.getElementById('cancel-invitation-btn').onclick = game.cancelInvitation;
+      },
+      hideModal() {
+        dom.modalContainer.innerHTML = '';
+      },
+      showGameStatus(text, type = '', duration = 0) {
+        dom.gameStatusText.textContent = text;
+        dom.gameStatusText.className = type ? `result-${type}` : '';
+        dom.gameStatusDisplay.classList.remove('hidden');
+        dom.gameChoicesDisplay.classList.add('hidden');
+        dom.winnerDisplay.classList.add('hidden');
+        if (duration > 0) setTimeout(() => dom.gameStatusDisplay.classList.add('hidden'), duration);
+      },
+      hideGameStatus() {
+        dom.gameStatusDisplay.classList.add('hidden');
+        dom.gameChoicesDisplay.classList.add('hidden');
+        dom.winnerDisplay.classList.add('hidden');
+      },
+      showGameResult(gameData, myChoice, opponentChoice, winnerChoice) {
+        const myUid = appState.currentUser.uid;
+        const amP1 = gameData.players.p1.uid === myUid;
+        dom.player1ChoiceEmoji.textContent = choiceEmojis[myChoice];
+        dom.player1ChoiceLabel.textContent = `You: ${myChoice.toUpperCase()}`;
+        dom.player2ChoiceEmoji.textContent = choiceEmojis[opponentChoice];
+        dom.player2ChoiceLabel.textContent = `Opponent: ${opponentChoice.toUpperCase()}`;
+        dom.gameChoicesDisplay.classList.remove('hidden');
+        let resultText, resultClass, winnerName;
+        if (winnerChoice === null) {
+          resultText = "It's a Draw!";
+          resultClass = "draw";
+          winnerName = "Nobody wins";
+        } else if (myChoice === winnerChoice) {
+          resultText = "YOU WIN!";
+          resultClass = "win";
+          winnerName = `Winner: ${appState.currentUserProfile.displayName}`;
+        } else {
+          resultText = "YOU LOSE!";
+          resultClass = "lose";
+          const opponentName = amP1 ? gameData.players.p2.displayName : gameData.players.p1.displayName;
+          winnerName = `Winner: ${opponentName}`;
+        }
+        dom.gameStatusText.textContent = resultText;
+        dom.gameStatusText.className = `result-${resultClass}`;
+        dom.winnerDisplay.textContent = winnerName;
+        dom.winnerDisplay.className = `result-${resultClass}`;
+        dom.winnerDisplay.classList.remove('hidden');
+        dom.gameStatusDisplay.classList.remove('hidden');
+      },
+      resetControlButtons(disabled = false) {
+        dom.controlButtons.forEach(btn => {
+          btn.classList.remove('selected');
+          btn.disabled = disabled;
+        });
+      },
+      updateGameInfo(gameData) {
+        if (!gameData || !gameData.players) return;
+        const myUid = appState.currentUser.uid;
+        const p1Data = gameData.players.p1;
+        const p2Data = gameData.players.p2;
+        const amP1 = p1Data.uid === myUid;
+        const localPlayer = amP1 ? p1Data : p2Data;
+        const remotePlayer = amP1 ? p2Data : p1Data;
+        dom.localPlayerName.textContent = localPlayer.displayName;
+        dom.localPlayerWallet.textContent = localPlayer.wallet;
+        dom.remotePlayerName.textContent = remotePlayer.displayName;
+        dom.remotePlayerWallet.textContent = remotePlayer.wallet;
+        dom.gameBetAmount.textContent = gameData.bet * 2;
+      }
+    };
 
-        init();
-    </script>
+    // ===== AUTH MANAGER =====
+    const authManager = {
+      init() {
+        document.getElementById('login-form').addEventListener('submit', e => {
+          e.preventDefault();
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          auth.signInWithEmailAndPassword(email, password).catch(err => ui.showAuthError(err.message));
+        });
+        document.getElementById('google-login-btn').addEventListener('click', () => {
+          auth.signInWithPopup(googleProvider).then(result => {
+            if (result.additionalUserInfo.isNewUser) dbManager.createUserProfile(result.user);
+          }).catch(err => ui.showAuthError(err.message));
+        });
+        document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+
+        auth.onAuthStateChanged(user => {
+          if (user) {
+            console.log("✅ Usuario autenticado:", user.uid);
+            appState.currentUser = user;
+            dbManager.onUserConnect();
+            dbManager.listenToProfile(user.uid);
+            dbManager.listenToPlayers();
+            dbManager.listenForInvitations(user.uid);
+            ui.showScreen(dom.lobbyScreen);
+          } else {
+            appState.currentUser = null;
+            appState.currentUserProfile = null;
+            ui.showScreen(dom.loginScreen);
+          }
+        });
+      }
+    };
+
+    // ===== DATABASE MANAGER =====
+    const dbManager = {
+      createUserProfile(user) {
+        return db.ref(`users/${user.uid}`).set({
+          uid: user.uid,
+          displayName: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          wallet: 100,
+          status: 'online'
+        });
+      },
+      onUserConnect() {
+        const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
+        db.ref('.info/connected').on('value', snap => {
+          if (snap.val() === false) return;
+          userStatusRef.onDisconnect().set('offline').then(() => userStatusRef.set('online'));
+        });
+      },
+      updateUserStatus(status) {
+        if (appState.currentUser) db.ref(`/users/${appState.currentUser.uid}/status`).set(status);
+      },
+      listenToProfile(uid) {
+        db.ref(`users/${uid}`).on('value', snap => {
+          appState.currentUserProfile = snap.val();
+          ui.updateLobbyHeader();
+        });
+      },
+      listenToPlayers() {
+        console.log("🔍 Escuchando usuarios...");
+        db.ref('users').on('value', snap => {
+          const players = snap.val() || {};
+          console.log("📊 Usuarios recibidos:", players);
+          const active = {};
+          Object.keys(players).forEach(uid => {
+            if (players[uid] && (players[uid].status === 'online' || players[uid].status === 'ingame')) active[uid] = players[uid];
+          });
+          console.log("🟢 Usuarios activos:", active);
+          ui.renderPlayers(active);
+        }, err => {
+          console.error("❌ Error escuchando usuarios:", err);
+        });
+      },
+      listenForInvitations(uid) {
+        const invRef = db.ref(`invitations/${uid}`);
+        invRef.on('child_added', snap => {
+          const inv = snap.val();
+          if (!inv || !inv.gameId) return;
+          db.ref(`games/${inv.gameId}`).once('value', gameSnap => {
+            if (gameSnap.exists() && gameSnap.val().status === 'pending') ui.showInvitationModal(snap);
+            else snap.ref.remove();
+          });
+        });
+        invRef.on('child_removed', () => {
+          if (document.getElementById('invitation-modal')) ui.hideModal();
+        });
+      }
+    };
+
+    // ===== WEBRTC (PEERJS) =====
+    const webrtc = {
+      async start() {
+        try {
+          const constraints = { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: true };
+          appState.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+          dom.localVideo.srcObject = appState.localStream;
+          await dom.localVideo.play();
+        } catch (e) {
+          console.error("WebRTC start failed:", e);
+          alert("Could not access camera/microphone. Please check permissions and refresh.");
+          game.leave();
+          return;
+        }
+        appState.peer = new Peer();
+        appState.peer.on('open', id => {
+          console.log('My peer ID is: ' + id);
+          const gameRef = db.ref(`games/${appState.currentGameId}`);
+          const myPeerKey = appState.isGameCreator ? 'p1PeerId' : 'p2PeerId';
+          gameRef.child(myPeerKey).set(id);
+          const opponentPeerKey = appState.isGameCreator ? 'p2PeerId' : 'p1PeerId';
+          gameRef.child(opponentPeerKey).on('value', snap => {
+            if (snap.exists() && snap.val()) {
+              appState.remotePeerId = snap.val();
+              if (appState.remotePeerId !== id) webrtc.connectToRemotePeer();
+            }
+          });
+        });
+        appState.peer.on('call', call => {
+          call.answer(appState.localStream);
+          call.on('stream', remoteStream => {
+            dom.remoteVideo.srcObject = remoteStream;
+            dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
+          });
+        });
+        appState.peer.on('error', err => console.error('PeerJS error:', err));
+      },
+      connectToRemotePeer() {
+        if (!appState.remotePeerId || !appState.peer) return;
+        const call = appState.peer.call(appState.remotePeerId, appState.localStream);
+        call.on('stream', remoteStream => {
+          dom.remoteVideo.srcObject = remoteStream;
+          dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
+        });
+        call.on('error', err => console.error('Call error:', err));
+      },
+      stop() {
+        if (appState.localStream) appState.localStream.getTracks().forEach(t => t.stop());
+        if (appState.peer) appState.peer.destroy();
+        dom.localVideo.srcObject = dom.remoteVideo.srcObject = null;
+        appState.localStream = appState.peer = appState.remotePeerId = null;
+      }
+    };
+
+    // ===== GAME LOGIC =====
+    const game = {
+      init() {
+        dom.controlButtons.forEach(btn => {
+          btn.addEventListener('click', e => {
+            if (btn.disabled) return;
+            sounds.play('click');
+            appState.playerChoice = e.currentTarget.dataset.choice;
+            dom.controlButtons.forEach(b => { b.classList.remove('selected'); b.disabled = true; });
+            e.currentTarget.classList.add('selected');
+            game.submitChoice();
+          });
+        });
+        ui.resetControlButtons(true);
+      },
+      sendInvitation(opponentId, opponentName, bet) {
+        if (bet > appState.currentUserProfile.wallet) { alert("You don't have enough coins!"); return; }
+        const gameId = db.ref('games').push().key;
+        const invitationKey = db.ref(`invitations/${opponentId}`).push().key;
+        appState.pendingInvitation = { gameId, opponentId, invitationKey };
+        const gameData = { bet, status: 'pending', players: { p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null }, p2: { uid: opponentId, displayName: opponentName, wallet: 0, choice: null } } };
+        const gameRef = db.ref(`games/${gameId}`);
+        const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
+        gameRef.set(gameData).then(() => invitationRef.set({ gameId, bet, fromUid: appState.currentUser.uid, fromName: appState.currentUserProfile.displayName }))
+          .then(() => {
+            ui.showWaitingModal(opponentName);
+            gameRef.onDisconnect().remove();
+            invitationRef.onDisconnect().remove();
+            appState.activeInvitationListener = gameRef.on('value', snap => {
+              if (!snap.exists()) {
+                game.cleanUpInvitationListeners();
+                ui.hideModal();
+                alert("The invitation was declined or cancelled.");
+                return;
+              }
+              if (snap.val().status === 'active') {
+                game.cleanUpInvitationListeners();
+                game.join(gameId, true);
+              }
+            });
+          });
+      },
+      cancelInvitation() {
+        if (!appState.pendingInvitation) return;
+        const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
+        const gameRef = db.ref(`games/${gameId}`);
+        const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
+        if (appState.activeInvitationListener) {
+          gameRef.off('value', appState.activeInvitationListener);
+          appState.activeInvitationListener = null;
+        }
+        gameRef.onDisconnect().cancel();
+        invitationRef.onDisconnect().cancel();
+        gameRef.remove();
+        invitationRef.remove();
+        appState.pendingInvitation = null;
+        ui.hideModal();
+      },
+      cleanUpInvitationListeners() {
+        if (!appState.pendingInvitation) return;
+        const { gameId, opponentId, invitationKey } = appState.pendingInvitation;
+        const gameRef = db.ref(`games/${gameId}`);
+        const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
+        if (appState.activeInvitationListener) {
+          gameRef.off('value', appState.activeInvitationListener);
+          appState.activeInvitationListener = null;
+        }
+        gameRef.onDisconnect().cancel();
+        invitationRef.onDisconnect().cancel();
+        appState.pendingInvitation = null;
+      },
+      declineInvitation(gameId, invitationRef) {
+        db.ref(`games/${gameId}`).remove();
+        if (invitationRef) invitationRef.remove();
+      },
+      async acceptInvitation(gameId, invitationRef) {
+        const gameRef = db.ref(`games/${gameId}`);
+        try {
+          const gameSnap = await gameRef.once('value');
+          if (!gameSnap.exists()) { if (invitationRef) invitationRef.remove(); return; }
+          const gameData = gameSnap.val();
+          if (gameData.status !== 'pending') { if (invitationRef) invitationRef.remove(); return; }
+          if (appState.currentUserProfile.wallet < gameData.bet) {
+            alert("You don't have enough coins!");
+            game.declineInvitation(gameId, invitationRef);
+            return;
+          }
+          const updates = {};
+          updates[`games/${gameId}/status`] = 'active';
+          updates[`games/${gameId}/players/p2/wallet`] = appState.currentUserProfile.wallet;
+          await db.ref().update(updates);
+          if (invitationRef) await invitationRef.remove();
+          game.join(gameId, false);
+        } catch (error) {
+          console.error("Error accepting invitation:", error);
+          if (invitationRef) invitationRef.remove();
+        }
+      },
+      join(gameId, isCreator) {
+        appState.currentGameId = gameId;
+        appState.isGameCreator = isCreator;
+        dbManager.updateUserStatus('ingame');
+        ui.showScreen(dom.gameScreen);
+        ui.hideModal();
+        webrtc.start();
+        const gameRef = db.ref(`games/${gameId}`);
+        appState.activeGameListener = gameRef.on('value', snap => game.stateMachine(snap.val()));
+      },
+      stateMachine(gameData) {
+        if (!gameData) {
+          if (appState.currentGameId) {
+            alert("The game has ended or the opponent disconnected.");
+            game.leave();
+          }
+          return;
+        }
+        ui.updateGameInfo(gameData);
+        switch (gameData.status) {
+          case 'active':
+            ui.showGameStatus("Connecting...", '', 0);
+            if (appState.isGameCreator) {
+              setTimeout(() => {
+                if (!appState.currentGameId) return;
+                db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
+                  const signals = snap.val();
+                  if (signals && signals.p1Signal && signals.p2Signal) game.startCountdown();
+                });
+              }, 2000);
+            }
+            break;
+          case 'countdown':
+            game.handleCountdown(gameData);
+            break;
+          case 'choose':
+            const myPlayerKey = appState.isGameCreator ? 'p1' : 'p2';
+            if (!gameData.players[myPlayerKey].choice) {
+              ui.hideGameStatus();
+              ui.resetControlButtons(false);
+            } else {
+              ui.showGameStatus("Waiting for opponent...", '', 0);
+            }
+            break;
+          case 'reveal':
+            ui.resetControlButtons(true);
+            game.revealResult(gameData);
+            break;
+          case 'finished':
+            if (!document.querySelector('.modal')) {
+              setTimeout(() => game.showPostGameOptions(), 5000);
+            }
+            break;
+        }
+      },
+      startCountdown() {
+        if (!appState.currentGameId) return;
+        const gameRef = db.ref(`games/${appState.currentGameId}`);
+        gameRef.transaction(currentData => {
+          if (currentData && currentData.status === 'active') {
+            currentData.status = 'countdown';
+            currentData.countdown = 3;
+            return currentData;
+          }
+        }).then(result => {
+          if (!result.committed) return;
+          let count = 3;
+          const interval = setInterval(() => {
+            count--;
+            if (count >= 0) db.ref(`games/${appState.currentGameId}/countdown`).set(count);
+            if (count < 0) {
+              clearInterval(interval);
+              db.ref(`games/${appState.currentGameId}/status`).set('choose');
+            }
+          }, 1000);
+        });
+      },
+      handleCountdown(gameData) {
+        const count = gameData.countdown;
+        if (count > 0) {
+          ui.showGameStatus(count);
+          sounds.play('countdown');
+        } else if (count === 0) {
+          ui.showGameStatus("CHOOSE NOW!");
+          sounds.play('alarm');
+          setTimeout(() => {
+            ui.hideGameStatus();
+            appState.playerChoice = null;
+            ui.resetControlButtons(false);
+          }, 1000);
+        }
+      },
+      submitChoice() {
+        if (!appState.currentGameId || !appState.playerChoice) return;
+        const playerKey = appState.isGameCreator ? 'p1' : 'p2';
+        db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
+          ui.showGameStatus("Choice locked! Waiting for opponent...", '', 0);
+          db.ref(`games/${appState.currentGameId}/players`).once('value', snap => {
+            const players = snap.val();
+            if (players.p1.choice && players.p2.choice && appState.isGameCreator) {
+              setTimeout(() => db.ref(`games/${appState.currentGameId}/status`).set('reveal'), 500);
+            }
+          });
+        });
+      },
+      revealResult(gameData) {
+        const { p1, p2 } = gameData.players;
+        if (!p1.choice || !p2.choice) return;
+        const myUid = appState.currentUser.uid;
+        const amP1 = p1.uid === myUid;
+        const myChoice = amP1 ? p1.choice : p2.choice;
+        const opponentChoice = amP1 ? p2.choice : p1.choice;
+        const winnerChoice = game.getWinner(p1.choice, p2.choice);
+        setTimeout(() => {
+          ui.showGameResult(gameData, myChoice, opponentChoice, winnerChoice);
+          if (winnerChoice === null) sounds.play('draw');
+          else if (myChoice === winnerChoice) sounds.play('win');
+          else sounds.play('lose');
+        }, 1000);
+        if (appState.isGameCreator) {
+          setTimeout(() => game.updateWalletsAndFinish(gameData, winnerChoice, p1.uid, p2.uid), 2000);
+        }
+      },
+      getWinner(c1, c2) {
+        if (c1 === c2) return null;
+        if ((c1 === 'rock' && c2 === 'scissors') || (c1 === 'scissors' && c2 === 'paper') || (c1 === 'paper' && c2 === 'rock')) return c1;
+        return c2;
+      },
+      async updateWalletsAndFinish(gameData, winnerChoice, p1Id, p2Id) {
+        if (winnerChoice === null) {
+          await db.ref(`games/${appState.currentGameId}/status`).set('finished');
+          return;
+        }
+        const { bet } = gameData;
+        const p1Won = gameData.players.p1.choice === winnerChoice;
+        const winnerId = p1Won ? p1Id : p2Id;
+        const loserId = p1Won ? p2Id : p1Id;
+        try {
+          const winnerRef = db.ref(`users/${winnerId}/wallet`);
+          const loserRef = db.ref(`users/${loserId}/wallet`);
+          await winnerRef.transaction(wallet => (wallet || 0) + bet);
+          await loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet));
+          console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
+          await db.ref(`games/${appState.currentGameId}/status`).set('finished');
+        } catch (error) {
+          console.error("Error updating wallets:", error);
+        }
+      },
+      showPostGameOptions() {
+        const modalHTML = `
+          <div class="modal">
+            <div class="modal-content">
+              <h3>Game Over</h3>
+              <p>Check your updated balance!</p>
+              <button id="exit-game-btn">Exit to Lobby</button>
+            </div>
+          </div>`;
+        dom.modalContainer.innerHTML = modalHTML;
+        document.getElementById('exit-game-btn').onclick = () => {
+          if (appState.isGameCreator) db.ref(`games/${appState.currentGameId}`).remove();
+          else game.leave();
+        };
+      },
+      leave() {
+        ui.hideModal();
+        webrtc.stop();
+        if (appState.currentGameId && appState.activeGameListener) {
+          db.ref(`games/${appState.currentGameId}`).off('value', appState.activeGameListener);
+        }
+        if (appState.pendingInvitation) game.cleanUpInvitationListeners();
+        dbManager.updateUserStatus('online');
+        appState.currentGameId = null;
+        appState.isGameCreator = false;
+        appState.activeGameListener = null;
+        appState.playerChoice = null;
+        ui.showScreen(dom.lobbyScreen);
+        ui.hideGameStatus();
+        ui.resetControlButtons(true);
+      }
+    };
+
+    // ===== INICIALIZACIÓN =====
+    function init() {
+      console.log("Initializing Metal RPS Arena...");
+      authManager.init();
+      game.init();
+    }
+    init();
+  </script>
 </body>
 </html>
