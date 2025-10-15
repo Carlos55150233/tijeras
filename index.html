@@ -419,6 +419,10 @@
             border-radius: 5px;
         }
 
+        .lobby-buttons button {
+            margin: 0 5px;
+        }
+
         @media (max-width: 600px) {
             #game-status-text {
                 font-size: 2rem;
@@ -458,7 +462,10 @@
                     </div>
                     <h4>Online Players:</h4>
                     <ul id="players-list"></ul>
-                    <button id="logout-btn">Logout</button>
+                    <div class="lobby-buttons">
+                        <button id="wallet-btn">Wallet</button>
+                        <button id="logout-btn">Logout</button>
+                    </div>
                 </div>
 
                 <div id="game-screen" class="screen-content hidden">
@@ -699,6 +706,23 @@
                 dom.modalContainer.innerHTML = modalHTML;
                 document.getElementById('cancel-invitation-btn').onclick = game.cancelInvitation;
             },
+            showWalletModal: () => {
+                const modalHTML = `
+                    <div class="modal" id="wallet-modal">
+                        <div class="modal-content">
+                            <h3>Wallet</h3>
+                            <p>Current Balance: 💰${appState.currentUserProfile.wallet}</p>
+                            <button id="deposit-btn">Deposit</button>
+                            <button id="withdraw-btn">Withdraw</button>
+                            <button id="close-wallet-btn">Close</button>
+                        </div>
+                    </div>
+                `;
+                dom.modalContainer.innerHTML = modalHTML;
+                document.getElementById('deposit-btn').onclick = () => alert('Deposit feature coming soon!');
+                document.getElementById('withdraw-btn').onclick = () => alert('Withdrawal feature coming soon!');
+                document.getElementById('close-wallet-btn').onclick = ui.hideModal;
+            },
             hideModal: () => {
                 dom.modalContainer.innerHTML = '';
             },
@@ -717,31 +741,39 @@
                 dom.gameChoicesDisplay.classList.add('hidden');
                 dom.winnerDisplay.classList.add('hidden');
             },
-            showGameResult: (gameData, myChoice, opponentChoice, winnerChoice) => {
+            showGameResult: (gameData) => {
+                const { p1, p2 } = gameData.players;
                 const myUid = appState.currentUser.uid;
-                const amP1 = gameData.players.p1.uid === myUid;
+                const amP1 = p1.uid === myUid;
+                
+                const myChoice = amP1 ? p1.choice : p2.choice;
+                const opponentChoice = amP1 ? p2.choice : p1.choice;
+
+                const myName = amP1 ? p1.displayName : p2.displayName;
+                const opponentName = amP1 ? p2.displayName : p1.displayName;
                 
                 dom.player1ChoiceEmoji.textContent = choiceEmojis[myChoice];
-                dom.player1ChoiceLabel.textContent = `You: ${myChoice.toUpperCase()}`;
+                dom.player1ChoiceLabel.textContent = `${myName}: ${myChoice.toUpperCase()}`;
                 
                 dom.player2ChoiceEmoji.textContent = choiceEmojis[opponentChoice];
-                dom.player2ChoiceLabel.textContent = `Opponent: ${opponentChoice.toUpperCase()}`;
+                dom.player2ChoiceLabel.textContent = `${opponentName}: ${opponentChoice.toUpperCase()}`;
                 
                 dom.gameChoicesDisplay.classList.remove('hidden');
                 
                 let resultText, resultClass, winnerName;
+                const winnerChoice = game.getWinner(p1.choice, p2.choice);
+
                 if (winnerChoice === null) {
-                    resultText = "It's a Draw!";
+                    resultText = "IT'S A DRAW!";
                     resultClass = "draw";
                     winnerName = "Nobody wins";
                 } else if (myChoice === winnerChoice) {
                     resultText = "YOU WIN!";
                     resultClass = "win";
-                    winnerName = `Winner: ${appState.currentUserProfile.displayName}`;
+                    winnerName = `Winner: ${myName}`;
                 } else {
                     resultText = "YOU LOSE!";
                     resultClass = "lose";
-                    const opponentName = amP1 ? gameData.players.p2.displayName : gameData.players.p1.displayName;
                     winnerName = `Winner: ${opponentName}`;
                 }
                 
@@ -749,7 +781,6 @@
                 dom.gameStatusText.className = `result-${resultClass}`;
                 
                 dom.winnerDisplay.textContent = winnerName;
-                dom.winnerDisplay.className = `result-${resultClass}`;
                 dom.winnerDisplay.classList.remove('hidden');
                 
                 dom.gameStatusDisplay.classList.remove('hidden');
@@ -765,9 +796,13 @@
                 const myUid = appState.currentUser.uid;
                 const p1Data = gameData.players.p1;
                 const p2Data = gameData.players.p2;
+
+                if (!p1Data || !p2Data) return;
+
                 const amP1 = p1Data.uid === myUid;
                 const localPlayer = amP1 ? p1Data : p2Data;
                 const remotePlayer = amP1 ? p2Data : p1Data;
+                
                 dom.localPlayerName.textContent = localPlayer.displayName;
                 dom.localPlayerWallet.textContent = localPlayer.wallet;
                 dom.remotePlayerName.textContent = remotePlayer.displayName;
@@ -782,6 +817,7 @@
                 document.getElementById('signup-btn').addEventListener('click', authManager.signup);
                 document.getElementById('google-login-btn').addEventListener('click', authManager.googleLogin);
                 document.getElementById('logout-btn').addEventListener('click', authManager.logout);
+                document.getElementById('wallet-btn').addEventListener('click', ui.showWalletModal);
                 
                 auth.onAuthStateChanged(user => {
                     if (user) {
@@ -807,11 +843,11 @@
         const dbManager = {
             createUserProfile: (user) => db.ref(`users/${user.uid}`).set({ uid: user.uid, displayName: user.displayName || user.email.split('@')[0], email: user.email, wallet: 100, status: 'online'}),
             onUserConnect: () => {
-                const userStatusRef = db.ref(`/users/${appState.currentUser.uid}/status`);
+                const userStatusRef = db.ref(`/users/${appState.currentUser.uid}`);
                 db.ref('.info/connected').on('value', snap => {
                     if (snap.val() === false) return;
-                    userStatusRef.onDisconnect().set('offline').then(() => {
-                        userStatusRef.set('online');
+                    userStatusRef.onDisconnect().update({ status: 'offline' }).then(() => {
+                        userStatusRef.update({ status: 'online' });
                     });
                 });
             },
@@ -869,16 +905,20 @@
                     return;
                 }
 
+                // **IMPROVED WebRTC configuration with TURN servers**
+                const iceServers = [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    // Adding public TURN servers for better connectivity
+                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                ];
+
                 appState.peer = new SimplePeer({
                     initiator: appState.isGameCreator,
                     stream: appState.localStream,
                     trickle: false,
-                    config: {
-                        iceServers: [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    }
+                    config: { iceServers }
                 });
 
                 const signalRef = db.ref(`games/${appState.currentGameId}/signals`);
@@ -893,12 +933,15 @@
                     dom.remoteVideo.srcObject = stream;
                     dom.remoteVideo.play().catch(e => {
                         console.log("Autoplay prevented, trying with user interaction");
-                        setTimeout(() => dom.remoteVideo.play(), 1000);
                     });
                 });
 
                 appState.peer.on('connect', () => {
                     console.log('Peer connection established');
+                     // Only the creator starts the countdown once connection is established
+                    if (appState.isGameCreator) {
+                        setTimeout(() => game.startCountdown(), 1000);
+                    }
                 });
 
                 appState.peer.on('close', () => {
@@ -908,6 +951,7 @@
                 
                 appState.peer.on('error', (err) => {
                     console.error('Peer error', err);
+                    // Attempt to reconnect or show an error
                 });
 
                 signalRef.child(opponentSignalKey).on('value', snap => {
@@ -974,7 +1018,7 @@
                     status: 'pending',
                     players: {
                         p1: { uid: appState.currentUser.uid, displayName: appState.currentUserProfile.displayName, wallet: appState.currentUserProfile.wallet, choice: null },
-                        p2: { uid: opponentId, displayName: opponentName, wallet: 0, choice: null }
+                        p2: { uid: opponentId, displayName: opponentName, wallet: 0, choice: null } // Wallet will be fetched on accept
                     },
                 };
 
@@ -1001,9 +1045,15 @@
                             alert("The invitation was declined or cancelled.");
                             return;
                         }
-                        if (snap.val().status === 'active') {
+                        const gameVal = snap.val();
+                        if (gameVal.status === 'active') {
                             game.cleanUpInvitationListeners();
                             game.join(gameId, true);
+                        } else if (gameVal.status === 'declined') {
+                            game.cleanUpInvitationListeners();
+                            ui.hideModal();
+                            alert(`${opponentName} declined the invitation.`);
+                            snap.ref.remove();
                         }
                     });
                 });
@@ -1016,13 +1066,7 @@
                 const gameRef = db.ref(`games/${gameId}`);
                 const invitationRef = db.ref(`invitations/${opponentId}/${invitationKey}`);
                 
-                if (appState.activeInvitationListener) {
-                    gameRef.off('value', appState.activeInvitationListener);
-                    appState.activeInvitationListener = null;
-                }
-                
-                gameRef.onDisconnect().cancel();
-                invitationRef.onDisconnect().cancel();
+                game.cleanUpInvitationListeners();
                 
                 gameRef.remove();
                 invitationRef.remove();
@@ -1049,7 +1093,8 @@
             },
 
             declineInvitation: (gameId, invitationRef) => {
-                db.ref(`games/${gameId}`).remove();
+                // Update game status to declined so the sender is notified.
+                db.ref(`games/${gameId}/status`).set('declined');
                 if(invitationRef) invitationRef.remove();
             },
 
@@ -1076,8 +1121,13 @@
                         return;
                     }
                     
+                    // Fetch opponent's wallet to display correctly from the start
+                    const opponentProfileSnap = await db.ref(`users/${gameData.players.p1.uid}`).once('value');
+                    const opponentWallet = opponentProfileSnap.val().wallet;
+
                     const updates = {};
                     updates[`games/${gameId}/status`] = 'active';
+                    updates[`games/${gameId}/players/p1/wallet`] = opponentWallet;
                     updates[`games/${gameId}/players/p2/wallet`] = appState.currentUserProfile.wallet;
                     
                     await db.ref().update(updates);
@@ -1118,17 +1168,6 @@
                 switch (gameData.status) {
                     case 'active':
                         ui.showGameStatus("Connecting...", '', 0);
-                        if (appState.isGameCreator) {
-                            setTimeout(() => {
-                                if (!appState.currentGameId) return;
-                                db.ref(`games/${appState.currentGameId}/signals`).once('value', snap => {
-                                    const signals = snap.val();
-                                    if(signals && signals.p1Signal && signals.p2Signal) {
-                                        game.startCountdown();
-                                    }
-                                });
-                            }, 2000);
-                        }
                         break;
                     case 'countdown':
                         game.handleCountdown(gameData);
@@ -1147,17 +1186,19 @@
                         game.revealResult(gameData);
                         break;
                     case 'finished':
-                        if (!document.querySelector('.modal')) {
-                            setTimeout(() => {
-                                game.showPostGameOptions();
-                            }, 5000);
+                        // Only show post-game options once, and not if a modal is already open
+                        if (!document.getElementById('post-game-modal')) {
+                             setTimeout(() => {
+                                 // Check if still in game before showing modal
+                                 if(appState.currentGameId) game.showPostGameOptions(gameData);
+                             }, 4000);
                         }
                         break;
                 }
             },
             
             startCountdown: () => {
-                if (!appState.currentGameId) return;
+                if (!appState.currentGameId || !appState.isGameCreator) return;
                 
                 const gameRef = db.ref(`games/${appState.currentGameId}`);
                 gameRef.transaction(currentData => {
@@ -1166,17 +1207,21 @@
                         currentData.countdown = 3;
                         return currentData;
                     }
-                    return;
+                    return; // Abort transaction
                 }).then(result => {
                     if (!result.committed) return;
                     let count = 3;
                     const interval = setInterval(() => {
+                        if (!appState.currentGameId) {
+                            clearInterval(interval);
+                            return;
+                        }
                         count--;
                         if (count >= 0) {
                             db.ref(`games/${appState.currentGameId}/countdown`).set(count);
-                        }
-                        if (count < 0) {
+                        } else {
                             clearInterval(interval);
+                            // Creator moves the game to the 'choose' state
                             db.ref(`games/${appState.currentGameId}/status`).set('choose');
                         }
                     }, 1000);
@@ -1189,13 +1234,8 @@
                     ui.showGameStatus(count);
                     sounds.play('countdown');
                 } else if (count === 0) {
-                    ui.showGameStatus("CHOOSE NOW!");
+                    ui.showGameStatus("CHOOSE!");
                     sounds.play('alarm');
-                    setTimeout(() => {
-                        ui.hideGameStatus();
-                        appState.playerChoice = null;
-                        ui.resetControlButtons(false);
-                    }, 1000);
                 }
             },
             
@@ -1205,40 +1245,40 @@
                 db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice).then(() => {
                     ui.showGameStatus("Choice locked! Waiting for opponent...", '', 0);
                     
-                    db.ref(`games/${appState.currentGameId}/players`).once('value', (snap) => {
-                        const players = snap.val();
-                        if (players.p1.choice && players.p2.choice && appState.isGameCreator) {
-                            setTimeout(() => {
-                                db.ref(`games/${appState.currentGameId}/status`).set('reveal');
-                            }, 500);
-                        }
-                    });
+                    // Only creator checks if both have chosen
+                    if (appState.isGameCreator) {
+                        db.ref(`games/${appState.currentGameId}/players`).once('value', (snap) => {
+                            const players = snap.val();
+                            if (players && players.p1 && players.p2 && players.p1.choice && players.p2.choice) {
+                                setTimeout(() => {
+                                    db.ref(`games/${appState.currentGameId}/status`).set('reveal');
+                                }, 500);
+                            }
+                        });
+                    }
                 });
             },
             
             revealResult: (gameData) => {
+                if (gameData.status !== 'reveal') return; // Prevent multiple executions
+
                 const { p1, p2 } = gameData.players;
                 if(!p1.choice || !p2.choice) return;
-
-                const myUid = appState.currentUser.uid;
-                const amP1 = p1.uid === myUid;
-                const myChoice = amP1 ? p1.choice : p2.choice;
-                const opponentChoice = amP1 ? p2.choice : p1.choice;
                 
+                ui.showGameResult(gameData);
+
                 const winnerChoice = game.getWinner(p1.choice, p2.choice);
+                const myChoice = appState.isGameCreator ? p1.choice : p2.choice;
 
-                setTimeout(() => {
-                    ui.showGameResult(gameData, myChoice, opponentChoice, winnerChoice);
-                    
-                    if (winnerChoice === null) {
-                        sounds.play('draw');
-                    } else if (myChoice === winnerChoice) {
-                        sounds.play('win');
-                    } else {
-                        sounds.play('lose');
-                    }
-                }, 1000);
+                if (winnerChoice === null) {
+                    sounds.play('draw');
+                } else if (myChoice === winnerChoice) {
+                    sounds.play('win');
+                } else {
+                    sounds.play('lose');
+                }
                 
+                // Only creator finalizes the game and updates wallets
                 if (appState.isGameCreator) {
                     setTimeout(() => {
                         db.ref(`games/${appState.currentGameId}`).transaction(currentData => {
@@ -1246,10 +1286,10 @@
                                  currentData.status = 'finished';
                                  return currentData;
                             }
-                            return;
+                            return; // Abort
                         }).then(result => {
                             if (result.committed) {
-                                game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
+                                game.updateWallets(result.snapshot.val(), winnerChoice);
                             }
                         });
                     }, 2000);
@@ -1266,39 +1306,53 @@
                 return c2;
             },
             
-            updateWallets: (gameData, winnerChoice, p1Id, p2Id) => {
+            updateWallets: (gameData, winnerChoice) => {
                 if (winnerChoice === null) return Promise.resolve();
                 
-                const { bet } = gameData;
-                const p1Won = gameData.players.p1.choice === winnerChoice;
-                const winnerId = p1Won ? p1Id : p2Id;
-                const loserId = p1Won ? p2Id : p1Id;
+                const { bet, players } = gameData;
+                const p1Won = players.p1.choice === winnerChoice;
+                const winnerId = p1Won ? players.p1.uid : players.p2.uid;
+                const loserId = p1Won ? players.p2.uid : players.p1.uid;
                 
                 const winnerRef = db.ref(`users/${winnerId}/wallet`);
                 const loserRef = db.ref(`users/${loserId}/wallet`);
 
+                // Use transactions for safe concurrent updates
                 return Promise.all([
                     winnerRef.transaction(wallet => (wallet || 0) + bet),
                     loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet))
                 ]).then(() => {
                     console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
+                }).catch(error => {
+                    console.error("Wallet update failed: ", error);
                 });
             },
             
-            showPostGameOptions: () => {
+            showPostGameOptions: (gameData) => {
+                const myUid = appState.currentUser.uid;
+                const { p1, p2 } = gameData.players;
+                const myChoice = p1.uid === myUid ? p1.choice : p2.choice;
+                const winnerChoice = game.getWinner(p1.choice, p2.choice);
+                let resultText = "Game Over";
+                if(winnerChoice === null) resultText = "It was a draw!";
+                else if(winnerChoice === myChoice) resultText = `You won ${gameData.bet} coins!`;
+                else resultText = `You lost ${gameData.bet} coins.`;
+
                 const modalHTML = `
-                    <div class="modal">
+                    <div class="modal" id="post-game-modal">
                         <div class="modal-content">
-                            <h3>Game Over</h3>
-                            <p>Check your updated balance!</p>
+                            <h3>${resultText}</h3>
+                            <p>Play again or return to the lobby.</p>
                             <button id="exit-game-btn">Exit to Lobby</button>
                         </div>
                     </div>`;
                 dom.modalContainer.innerHTML = modalHTML;
                 document.getElementById('exit-game-btn').onclick = () => {
                      if (appState.isGameCreator) {
+                        // Creator is responsible for cleaning up the game object
                         db.ref(`games/${appState.currentGameId}`).remove();
                      } else {
+                        // The other player just leaves. The game object will be removed by the creator.
                         game.leave();
                      }
                 }
