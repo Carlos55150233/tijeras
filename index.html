@@ -520,7 +520,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
     <script type="module">
         const firebaseConfig = {
@@ -544,12 +544,14 @@
             currentUserProfile: null,
             currentGameId: null,
             localStream: null,
-            peer: null,
+            peerConnection: null,
             isGameCreator: false,
             playerChoice: null,
             activeGameListener: null,
             pendingInvitation: null, 
             activeInvitationListener: null,
+            peer: null,
+            remotePeerId: null,
         };
 
         const dom = {
@@ -847,14 +849,10 @@
                     const constraints = {
                         video: {
                             facingMode: 'user',
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
                         },
-                        audio: {
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true
-                        }
+                        audio: true
                     };
                     
                     appState.localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -869,60 +867,54 @@
                     return;
                 }
 
-                appState.peer = new SimplePeer({
-                    initiator: appState.isGameCreator,
-                    stream: appState.localStream,
-                    trickle: false,
-                    config: {
-                        iceServers: [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    }
-                });
-
-                const signalRef = db.ref(`games/${appState.currentGameId}/signals`);
-                const mySignalKey = appState.isGameCreator ? 'p1Signal' : 'p2Signal';
-                const opponentSignalKey = appState.isGameCreator ? 'p2Signal' : 'p1Signal';
-
-                appState.peer.on('signal', data => {
-                    signalRef.child(mySignalKey).set(JSON.stringify(data));
-                });
+                // Usar PeerJS para conexiones más estables
+                appState.peer = new Peer();
                 
-                appState.peer.on('stream', stream => {
-                    dom.remoteVideo.srcObject = stream;
-                    dom.remoteVideo.play().catch(e => {
-                        console.log("Autoplay prevented, trying with user interaction");
-                        setTimeout(() => dom.remoteVideo.play(), 1000);
+                appState.peer.on('open', (id) => {
+                    console.log('My peer ID is: ' + id);
+                    
+                    const gameRef = db.ref(`games/${appState.currentGameId}`);
+                    const myPeerKey = appState.isGameCreator ? 'p1PeerId' : 'p2PeerId';
+                    gameRef.child(myPeerKey).set(id);
+                    
+                    const opponentPeerKey = appState.isGameCreator ? 'p2PeerId' : 'p1PeerId';
+                    gameRef.child(opponentPeerKey).on('value', (snap) => {
+                        if (snap.exists() && snap.val()) {
+                            appState.remotePeerId = snap.val();
+                            if (appState.remotePeerId !== id) {
+                                webrtc.connectToRemotePeer();
+                            }
+                        }
                     });
                 });
 
-                appState.peer.on('connect', () => {
-                    console.log('Peer connection established');
+                appState.peer.on('call', (call) => {
+                    call.answer(appState.localStream);
+                    call.on('stream', (remoteStream) => {
+                        dom.remoteVideo.srcObject = remoteStream;
+                        dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
+                    });
                 });
 
-                appState.peer.on('close', () => {
-                    console.log('Peer connection closed');
-                    game.leave();
-                });
-                
                 appState.peer.on('error', (err) => {
-                    console.error('Peer error', err);
-                });
-
-                signalRef.child(opponentSignalKey).on('value', snap => {
-                    if (snap.exists() && appState.peer && !appState.peer.destroyed) {
-                        try {
-                            const signalData = JSON.parse(snap.val());
-                            if (!appState.peer.connected) {
-                                appState.peer.signal(signalData);
-                            }
-                        } catch(e) {
-                            console.error('Error parsing signal:', e);
-                        }
-                    }
+                    console.error('PeerJS error:', err);
                 });
             },
+
+            connectToRemotePeer: () => {
+                if (!appState.remotePeerId || !appState.peer) return;
+                
+                const call = appState.peer.call(appState.remotePeerId, appState.localStream);
+                call.on('stream', (remoteStream) => {
+                    dom.remoteVideo.srcObject = remoteStream;
+                    dom.remoteVideo.play().catch(e => console.error("Remote video play error:", e));
+                });
+                
+                call.on('error', (err) => {
+                    console.error('Call error:', err);
+                });
+            },
+            
             stop: () => {
                 if (appState.localStream) {
                     appState.localStream.getTracks().forEach(track => track.stop());
@@ -934,6 +926,7 @@
                 dom.remoteVideo.srcObject = null;
                 appState.localStream = null;
                 appState.peer = null;
+                appState.remotePeerId = null;
             }
         };
         
@@ -1241,17 +1234,7 @@
                 
                 if (appState.isGameCreator) {
                     setTimeout(() => {
-                        db.ref(`games/${appState.currentGameId}`).transaction(currentData => {
-                            if (currentData && currentData.status === 'reveal') {
-                                 currentData.status = 'finished';
-                                 return currentData;
-                            }
-                            return;
-                        }).then(result => {
-                            if (result.committed) {
-                                game.updateWallets(result.snapshot.val(), winnerChoice, p1.uid, p2.uid);
-                            }
-                        });
+                        game.updateWalletsAndFinish(gameData, winnerChoice, p1.uid, p2.uid);
                     }, 2000);
                 }
             },
@@ -1266,23 +1249,34 @@
                 return c2;
             },
             
-            updateWallets: (gameData, winnerChoice, p1Id, p2Id) => {
-                if (winnerChoice === null) return Promise.resolve();
+            updateWalletsAndFinish: async (gameData, winnerChoice, p1Id, p2Id) => {
+                if (winnerChoice === null) {
+                    // Es un empate, no se actualizan wallets
+                    await db.ref(`games/${appState.currentGameId}/status`).set('finished');
+                    return;
+                }
                 
                 const { bet } = gameData;
                 const p1Won = gameData.players.p1.choice === winnerChoice;
                 const winnerId = p1Won ? p1Id : p2Id;
                 const loserId = p1Won ? p2Id : p1Id;
                 
-                const winnerRef = db.ref(`users/${winnerId}/wallet`);
-                const loserRef = db.ref(`users/${loserId}/wallet`);
+                try {
+                    // Actualizar wallets usando transacciones para mayor seguridad
+                    const winnerRef = db.ref(`users/${winnerId}/wallet`);
+                    const loserRef = db.ref(`users/${loserId}/wallet`);
 
-                return Promise.all([
-                    winnerRef.transaction(wallet => (wallet || 0) + bet),
-                    loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet))
-                ]).then(() => {
+                    await winnerRef.transaction(wallet => (wallet || 0) + bet);
+                    await loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet));
+                    
                     console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
-                });
+                    
+                    // Marcar juego como terminado
+                    await db.ref(`games/${appState.currentGameId}/status`).set('finished');
+                    
+                } catch (error) {
+                    console.error("Error updating wallets:", error);
+                }
             },
             
             showPostGameOptions: () => {
