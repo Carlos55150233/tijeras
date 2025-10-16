@@ -123,7 +123,7 @@
       z-index: 2;
       position: relative;
     }
-    #login-screen button, #lobby-screen button, .modal button {
+    #login-screen button, #lobby-screen button, .modal button, .action-button {
       background: var(--metal-mid-gray);
       border: 2px solid var(--metal-light-gray);
       color: var(--metal-silver);
@@ -134,9 +134,14 @@
       margin: 5px;
       font-size: 1rem;
     }
-    #login-screen button:hover, #lobby-screen button:hover, .modal button:hover {
+    #login-screen button:hover, #lobby-screen button:hover, .modal button:hover, .action-button:hover {
       background: var(--glow-blue);
       border-color: var(--metal-silver);
+    }
+     .action-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: var(--metal-dark-gray);
     }
     #login-screen input {
       background: var(--metal-dark-gray);
@@ -440,6 +445,16 @@
             </div>
           </div>
           <div id="winner-display" class="hidden"></div>
+          
+          <!-- POST GAME BUTTONS -->
+          <div id="post-game-actions" class="hidden" style="margin-top: 25px;">
+              <p id="rematch-status-text" style="margin-bottom: 10px; color: var(--metal-silver);"></p>
+              <div style="display: flex; justify-content: center; gap: 10px;">
+                  <button id="rematch-btn" class="action-button">Rematch</button>
+                  <button id="exit-game-btn" class="action-button">Exit to Lobby</button>
+              </div>
+          </div>
+
         </div>
 
         <!-- MODALS -->
@@ -644,6 +659,7 @@
         dom.modalContainer.innerHTML = '';
       },
       showGameStatus(text, type = '', duration = 0) {
+        document.getElementById('post-game-actions').classList.add('hidden'); // Ensure buttons are hidden on new status
         dom.gameStatusText.textContent = text;
         dom.gameStatusText.className = type ? `result-${type}` : '';
         dom.gameStatusDisplay.classList.remove('hidden');
@@ -655,6 +671,7 @@
         dom.gameStatusDisplay.classList.add('hidden');
         dom.gameChoicesDisplay.classList.add('hidden');
         dom.winnerDisplay.classList.add('hidden');
+        document.getElementById('post-game-actions').classList.add('hidden');
       },
       showGameResult(gameData, myChoice, opponentChoice, winnerChoice) {
         const myUid = appState.currentUser.uid;
@@ -684,6 +701,7 @@
         dom.winnerDisplay.textContent = winnerName;
         dom.winnerDisplay.className = `result-${resultClass}`;
         dom.winnerDisplay.classList.remove('hidden');
+        document.getElementById('post-game-actions').classList.add('hidden'); // Hide buttons initially
         dom.gameStatusDisplay.classList.remove('hidden');
       },
       resetControlButtons(disabled = false) {
@@ -996,43 +1014,38 @@
             game.handleCountdown(gameData);
             break;
           case 'choose':
-            // ===== START: FIX FOR STUCK GAME =====
             const myPlayerKey = appState.isGameCreator ? 'p1' : 'p2';
-
             if (!gameData.players[myPlayerKey].choice) {
               ui.hideGameStatus();
               ui.resetControlButtons(false);
             } else {
               ui.showGameStatus("Waiting for opponent...", '', 0);
             }
-            
             const { p1, p2 } = gameData.players;
             if (p1.choice && p2.choice && appState.isGameCreator) {
               setTimeout(() => {
-                  db.ref(`games/${appState.currentGameId}/status`).set('reveal');
+                  if (appState.currentGameId) db.ref(`games/${appState.currentGameId}/status`).set('reveal');
               }, 500);
             }
-            // ===== END: FIX FOR STUCK GAME =====
             break;
           case 'reveal':
             ui.resetControlButtons(true);
             game.revealResult(gameData);
             break;
           case 'finished':
-            if (!document.getElementById('post-game-modal')) {
-              setTimeout(() => game.showPostGameOptions(), 4000);
-            }
+            game.showPostGameOptions(); 
             const p1Data = gameData.players.p1;
             const p2Data = gameData.players.p2;
             if (p1Data.rematch && p2Data.rematch) {
               if (appState.isGameCreator) {
                 game.createRematchGame(gameData);
               }
-            } else if (document.getElementById('post-game-modal')) {
+            } else {
                 const myKey = appState.isGameCreator ? 'p1' : 'p2';
                 const opponentKey = appState.isGameCreator ? 'p2' : 'p1';
                 if (gameData.players[opponentKey].rematch && !gameData.players[myKey].rematch) {
-                    document.getElementById('rematch-status-text').textContent = "Opponent wants a rematch!";
+                    const statusText = document.getElementById('rematch-status-text');
+                    if (statusText) statusText.textContent = "Opponent wants a rematch!";
                 }
             }
             break;
@@ -1057,7 +1070,7 @@
               if (count >= 0) db.ref(`games/${appState.currentGameId}/countdown`).set(count);
               if (count < 0) {
                 clearInterval(interval);
-                db.ref(`games/${appState.currentGameId}/status`).set('choose');
+                if (appState.currentGameId) db.ref(`games/${appState.currentGameId}/status`).set('choose');
               }
             } else {
                 clearInterval(interval);
@@ -1083,7 +1096,6 @@
       submitChoice() {
         if (!appState.currentGameId || !appState.playerChoice) return;
         const playerKey = appState.isGameCreator ? 'p1' : 'p2';
-        // The stateMachine will now handle advancing the game state.
         db.ref(`games/${appState.currentGameId}/players/${playerKey}/choice`).set(appState.playerChoice);
       },
       revealResult(gameData) {
@@ -1112,7 +1124,7 @@
       async updateWalletsAndFinish(gameData, winnerChoice, p1Id, p2Id) {
         const gameRef = db.ref(`games/${appState.currentGameId}/status`);
         if (winnerChoice === null) {
-          await gameRef.set('finished');
+          if (appState.currentGameId) await gameRef.set('finished');
           return;
         }
         const { bet } = gameData;
@@ -1125,31 +1137,37 @@
           await winnerRef.transaction(wallet => (wallet || 0) + bet);
           await loserRef.transaction(wallet => Math.max(0, (wallet || 0) - bet));
           console.log(`Wallets updated: Winner +${bet}, Loser -${bet}`);
-          await gameRef.set('finished');
+          if (appState.currentGameId) await gameRef.set('finished');
         } catch (error) {
           console.error("Error updating wallets:", error);
         }
       },
       showPostGameOptions() {
-        if (!appState.currentGameId || document.getElementById('post-game-modal')) return;
-        ui.hideGameStatus();
-        const modalHTML = `
-          <div class="modal" id="post-game-modal">
-            <div class="modal-content">
-              <h3>Game Over</h3>
-              <p id="rematch-status-text">Play again?</p>
-              <button id="rematch-btn">Rematch</button>
-              <button id="exit-game-btn">Exit to Lobby</button>
-            </div>
-          </div>`;
-        dom.modalContainer.innerHTML = modalHTML;
-        document.getElementById('rematch-btn').onclick = () => {
+        if (!appState.currentGameId) return;
+
+        const actionsContainer = document.getElementById('post-game-actions');
+        const rematchBtn = document.getElementById('rematch-btn');
+        
+        // Only setup buttons once
+        if (rematchBtn && rematchBtn.onclick) return;
+
+        const statusText = document.getElementById('rematch-status-text');
+        const exitBtn = document.getElementById('exit-game-btn');
+        
+        if (!actionsContainer || !statusText || !rematchBtn || !exitBtn) return;
+        
+        statusText.textContent = "Play again?";
+        rematchBtn.disabled = false;
+        actionsContainer.classList.remove('hidden');
+
+        rematchBtn.onclick = () => {
           const playerKey = appState.isGameCreator ? 'p1' : 'p2';
           db.ref(`games/${appState.currentGameId}/players/${playerKey}/rematch`).set(true);
-          document.getElementById('rematch-status-text').textContent = "Waiting for opponent...";
-          document.getElementById('rematch-btn').disabled = true;
+          statusText.textContent = "Waiting for opponent...";
+          rematchBtn.disabled = true;
         };
-        document.getElementById('exit-game-btn').onclick = () => {
+
+        exitBtn.onclick = () => {
           if (appState.isGameCreator && appState.currentGameId) {
             db.ref(`games/${appState.currentGameId}`).remove();
           } else {
@@ -1163,12 +1181,15 @@
         const nextGameRef = db.ref(`games/${oldGameId}/nextGameId`);
         const snap = await nextGameRef.once('value');
         if (snap.exists()) return;
+        
         console.log('Creator is creating a rematch game...');
         const newGameId = db.ref('games').push().key;
-        const p1_new = { ...oldGameData.players.p1, choice: null, rematch: null };
-        delete p1_new.rematch;
-        const p2_new = { ...oldGameData.players.p2, choice: null, rematch: null };
-        delete p2_new.rematch;
+
+        const p1_new = { ...oldGameData.players.p1, choice: null };
+        delete p1_new.rematch; // Clean up for the new game
+        const p2_new = { ...oldGameData.players.p2, choice: null };
+        delete p2_new.rematch; // Clean up for the new game
+
         const newGameData = {
           bet: oldGameData.bet,
           status: 'active',
@@ -1181,14 +1202,21 @@
         console.log(`Both players agreed. Moving to new game: ${nextGameId}`);
         const oldGameId = appState.currentGameId;
         const isCreator = appState.isGameCreator;
+        
         if (oldGameId && appState.activeGameListener) {
             db.ref(`games/${oldGameId}`).off('value', appState.activeGameListener);
             appState.activeGameListener = null;
         }
+
         ui.hideModal();
         if (isCreator) {
             db.ref(`games/${oldGameId}`).remove();
         }
+
+        // Reset UI elements for the new round
+        ui.hideGameStatus();
+        webrtc.stop(); // Stop old video streams before starting new ones
+
         game.join(nextGameId, isCreator);
       },
       leave() {
