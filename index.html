@@ -1140,6 +1140,12 @@
       },
       showPostGameOptions() {
         if (!appState.currentGameId || document.getElementById('post-game-modal')) return;
+
+        // ===== START: FIX =====
+        // First, hide the winner/loser result screen that is currently visible.
+        ui.hideGameStatus();
+        // ===== END: FIX =====
+
         const modalHTML = `
           <div class="modal" id="post-game-modal">
             <div class="modal-content">
